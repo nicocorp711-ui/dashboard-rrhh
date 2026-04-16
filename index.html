@@ -468,7 +468,7 @@ tbody td{padding:9px 14px;color:var(--text);white-space:nowrap}
           <div class="card-title">RQ realizados vs atendidos por mes</div>
           <div class="card-sub">Comparativo mensual</div>
           <div class="legend">
-            <div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>Realizados</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>Solicitados</div>
             <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Atendidos</div>
             <div class="leg-item"><div class="leg-dot" style="background:var(--amber)"></div>Pendientes acum.</div>
           </div>
@@ -1367,14 +1367,14 @@ function renderMovTable() {
 ══════════════════════════════════════════════ */
 function renderRQKPIs() {
   const rqFil = DB.rq.filter(matchFilterRQ);
-  const realizados = rqFil.length;
-  const atendidos = rqFil.filter(r=>r.estado==='Atendido').length;
-  const pendientes = rqFil.filter(r=>r.estado==='Pendiente').length;
-  const tiempos = rqFil.filter(r=>r.tiempoProceso).map(r=>r.tiempoProceso);
+  const solicitados = rqFil.length;                                          // todos
+  const atendidos   = rqFil.filter(r => r.estado === 'Atendido').length;    // estado Atendido
+  const pendientes  = rqFil.filter(r => r.estado === 'Pendiente').length;   // estado Pendiente
+  const tiempos = rqFil.filter(r => r.tiempoProceso).map(r => r.tiempoProceso);
   const tProm = tiempos.length ? Math.round(tiempos.reduce((a,b)=>a+b,0)/tiempos.length) : 0;
   document.getElementById('kpi-rq').innerHTML=`
-    <div class="kpi c-blue"><div class="kpi-ico">📝</div><div class="kpi-lbl">RQ Realizados</div><div class="kpi-val">${realizados}</div><div class="kpi-meta">Total del período</div></div>
-    <div class="kpi c-green"><div class="kpi-ico">✅</div><div class="kpi-lbl">RQ Atendidos</div><div class="kpi-val">${atendidos}</div><div class="kpi-meta">${realizados?Math.round(atendidos/realizados*100):0}% del total</div></div>
+    <div class="kpi c-blue"><div class="kpi-ico">📝</div><div class="kpi-lbl">RQ Solicitados</div><div class="kpi-val">${solicitados}</div><div class="kpi-meta">Total del período</div></div>
+    <div class="kpi c-green"><div class="kpi-ico">✅</div><div class="kpi-lbl">RQ Atendidos</div><div class="kpi-val">${atendidos}</div><div class="kpi-meta">${solicitados?Math.round(atendidos/solicitados*100):0}% del total</div></div>
     <div class="kpi c-amber"><div class="kpi-ico">⏳</div><div class="kpi-lbl">RQ Pendientes</div><div class="kpi-val">${pendientes}</div><div class="kpi-meta">Sin atender aún</div></div>
     <div class="kpi c-purple"><div class="kpi-ico">⏱️</div><div class="kpi-lbl">T. Prom. proceso</div><div class="kpi-val">${tProm}d</div><div class="kpi-meta">Recepción a ingreso</div></div>
   `;
@@ -1391,16 +1391,16 @@ function renderRQCharts() {
   const mesesPresentes = [...new Set(rqFil.map(r=>r.mes).filter(Boolean))]
     .sort((a,b)=>mesOrden.indexOf(a)-mesOrden.indexOf(b));
 
-  const rqMes = mesesPresentes.map(m=>rqFil.filter(r=>r.mes===m).length);
-  const atMes = mesesPresentes.map(m=>rqFil.filter(r=>r.mes===m&&r.estado==='Atendido').length);
-  // Pendientes acumulados por mes de origen (los que siguen pendientes HOY)
-  const pendAcumMes = mesesPresentes.map(m=>DB.rq.filter(r=>r.mes===m&&r.estado==='Pendiente').length);
+  // Solicitados = todos, Atendidos = estado Atendido, Pendientes = estado Pendiente
+  const rqMes      = mesesPresentes.map(m => rqFil.filter(r => r.mes===m).length);
+  const atMes      = mesesPresentes.map(m => rqFil.filter(r => r.mes===m && r.estado==='Atendido').length);
+  const pendAcumMes = mesesPresentes.map(m => DB.rq.filter(r => r.mes===m && r.estado==='Pendiente').length);
 
   destroyChart('rqmes');
   CHARTS.rqmes = new Chart(document.getElementById('ch-rq-mes'),{
     type:'bar',
     data:{labels:mesesPresentes,datasets:[
-      {label:'Realizados',data:rqMes,backgroundColor:'rgba(79,142,247,0.75)',borderRadius:4},
+      {label:'Solicitados',data:rqMes,backgroundColor:'rgba(79,142,247,0.75)',borderRadius:4},
       {label:'Atendidos',data:atMes,backgroundColor:'rgba(45,212,160,0.75)',borderRadius:4},
       {label:'Pendientes',data:pendAcumMes,backgroundColor:'rgba(245,165,42,0.75)',borderRadius:4},
     ]},
