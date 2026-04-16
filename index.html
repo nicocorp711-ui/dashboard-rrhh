@@ -612,6 +612,9 @@ async function loadFromSharePoint() {
   const lbl = document.getElementById('slabel');
   lbl.textContent = 'Cargando...';
   try {
+    // Limpiar datos anteriores
+    DB = { bajas:[], ingresos:[], rq:[] };
+
     const fetchJSON = async url => {
       const r = await fetch(url, { method:'GET' });
       if (!r.ok) throw new Error(`Error ${r.status} al obtener datos`);
@@ -824,6 +827,19 @@ function loadDemoData() {
     {fechaRecepcion:"2024-10-02",mes:"Oct",anio:2024,unidad:"Onoaga",area:"SSOMA",puesto:"Paramédico",responsable:"Gloria Tapia",candidato:"Diana Vargas",estado:"Atendido",fechaIngreso:"2024-10-14",tiempoProceso:12,eficiencia:"Eficiente"},
     {fechaRecepcion:"2024-10-15",mes:"Oct",anio:2024,unidad:"Pyramid Metals",area:"Planta",puesto:"Operador Planta",responsable:"Ana Torres",candidato:"",estado:"Pendiente",fechaIngreso:"",tiempoProceso:null,eficiencia:""},
   ];
+    // Calcular mesCese y mesIngreso para datos demo desde fechas ISO
+  DB.bajas = DB.bajas.map(r => {
+    const f = r.fechaCese || '';
+    const anio = parseInt(f.substring(0,4));
+    const mes = parseInt(f.substring(5,7)) - 1;
+    return { ...r, mesCese: (anio > 0 ? { anio, mes } : null) };
+  });
+  DB.ingresos = DB.ingresos.map(r => {
+    const f = r.fechaIngreso || '';
+    const anio = parseInt(f.substring(0,4));
+    const mes = parseInt(f.substring(5,7)) - 1;
+    return { ...r, mesIngreso: (anio > 0 ? { anio, mes } : null) };
+  });
   updateStatus();
   buildFilterOptions();
 }
