@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Gestión Humana</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0d1117; --surface:#161b27; --surface2:#1c2333; --surface3:#212840;
+  --border:rgba(255,255,255,0.06); --border2:rgba(255,255,255,0.11);
+  --text:#dde1ed; --text2:#7b82a0; --text3:#454d66;
+  --accent:#4f8ef7; --accent2:#7c4dff;
+  --green:#2dd4a0; --green2:rgba(45,212,160,0.12);
+  --red:#f26b6b; --red2:rgba(242,107,107,0.12);
+  --amber:#f5a52a; --amber2:rgba(245,165,42,0.12);
+  --blue2:rgba(79,142,247,0.12);
+  --purple:#a78bfa; --purple2:rgba(167,139,250,0.12);
+  --font:'DM Sans',sans-serif; --mono:'DM Mono',monospace;
+  --r:12px; --rs:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ══════════════════════════════════════
+   LOGIN
+══════════════════════════════════════ */
+#login-screen{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;z-index:200;
+}
+.login-wrap{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:20px;padding:48px 40px;width:360px;text-align:center;
+  position:relative;overflow:hidden;
+}
+.login-wrap::before{
+  content:'';position:absolute;top:-80px;left:50%;transform:translateX(-50%);
+  width:260px;height:260px;border-radius:50%;
+  background:radial-gradient(circle,rgba(79,142,247,0.13) 0%,transparent 70%);
+  pointer-events:none;
+}
+.login-logo{
+  width:52px;height:52px;border-radius:15px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 20px;font-size:24px;
+}
+.login-title{font-size:20px;font-weight:600;margin-bottom:6px}
+.login-sub{font-size:13px;color:var(--text2);margin-bottom:30px}
+.login-label{font-size:11px;color:var(--text2);text-align:left;margin-bottom:7px;letter-spacing:.06em;text-transform:uppercase}
+.login-input{
+  width:100%;background:var(--surface2);border:1px solid var(--border2);
+  border-radius:var(--rs);padding:12px 14px;color:var(--text);
+  font-family:var(--mono);font-size:15px;letter-spacing:.12em;
+  outline:none;transition:border-color .2s;margin-bottom:16px;
+}
+.login-input:focus{border-color:var(--accent)}
+.login-btn{
+  width:100%;background:var(--accent);border:none;border-radius:var(--rs);
+  padding:13px;color:#fff;font-family:var(--font);font-size:14px;font-weight:500;
+  cursor:pointer;transition:opacity .2s,transform .1s;
+}
+.login-btn:hover{opacity:.88}
+.login-btn:active{transform:scale(.98)}
+.login-error{color:var(--red);font-size:12px;margin-top:10px;min-height:18px}
+.login-shake{animation:shake .35s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+
+/* ══════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════ */
+#app{display:none;min-height:100vh;flex-direction:column}
+
+/* ── HEADER ── */
+.header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:15px 28px;border-bottom:1px solid var(--border);
+  background:var(--surface);position:sticky;top:0;z-index:50;gap:12px;flex-wrap:wrap;
+}
+.header-left{display:flex;align-items:center;gap:12px}
+.h-logo{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;
+}
+.h-title{font-size:15px;font-weight:600}
+.h-sub{font-size:11px;color:var(--text2)}
+.header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.status-pill{
+  display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);
+  background:var(--surface2);border:1px solid var(--border);padding:4px 11px;border-radius:20px;
+}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--text3)}
+.sdot.ok{background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hbtn{
+  background:transparent;border:1px solid var(--border2);border-radius:var(--rs);
+  color:var(--text2);font-family:var(--font);font-size:12px;padding:6px 12px;cursor:pointer;transition:all .15s;
+}
+.hbtn:hover{border-color:var(--accent);color:var(--accent)}
+.hbtn.danger:hover{border-color:var(--red);color:var(--red)}
+
+/* ── UPLOAD PANEL ── */
+#upload-panel{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:20px 28px;
+}
+.upload-title{font-size:13px;font-weight:500;margin-bottom:14px;color:var(--text2)}
+.upload-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.upload-card{
+  background:var(--surface2);border:1.5px dashed var(--border2);border-radius:var(--r);
+  padding:16px 18px;cursor:pointer;transition:all .2s;position:relative;
+}
+.upload-card:hover{border-color:var(--accent);background:var(--surface3)}
+.upload-card.loaded{border-style:solid;border-color:var(--green)}
+.upload-card input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.uc-icon{font-size:20px;margin-bottom:8px}
+.uc-name{font-size:13px;font-weight:500;margin-bottom:3px}
+.uc-desc{font-size:11px;color:var(--text2)}
+.uc-status{font-size:11px;margin-top:6px;color:var(--text3)}
+.uc-status.ok{color:var(--green)}
+.uc-status.err{color:var(--red)}
+
+/* ── FILTERS BAR ── */
+
+/* ── NAV BAR ── */
+.nav-bar{
+  display:flex;align-items:center;gap:8px;padding:10px 28px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  position:sticky;top:68px;z-index:49;flex-wrap:wrap;
+}
+.nav-btn{
+  padding:6px 18px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;
+  border:1px solid var(--border2);color:var(--text2);background:transparent;
+  transition:all .15s;font-family:var(--font);text-decoration:none;display:inline-block;
+}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent)}
+.nav-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.nav-label{font-size:11px;color:var(--text3);margin-right:4px}
+.filters-bar{
+  display:flex;align-items:center;gap:10px;padding:10px 28px;
+  background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;
+  position:sticky;top:116px;z-index:48;
+}
+.fsel{
+  background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rs);
+  padding:7px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;cursor:pointer;
+}
+.fsel:focus{border-color:var(--accent)}
+.fl{font-size:12px;color:var(--text2)}
+.chip{
+  padding:5px 14px;border-radius:20px;font-size:12px;cursor:pointer;
+  border:1px solid var(--border2);color:var(--text2);background:transparent;
+  transition:all .15s;font-family:var(--font);
+}
+.chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.reset-btn{
+  margin-left:auto;background:transparent;border:1px solid var(--border2);
+  border-radius:var(--rs);color:var(--text2);font-family:var(--font);
+  font-size:12px;padding:6px 12px;cursor:pointer;transition:all .15s;
+}
+.reset-btn:hover{border-color:var(--text2);color:var(--text)}
+
+/* ── MAIN ── */
+.main{padding:24px 28px;max-width:1500px;margin:0 auto;width:100%}
+
+/* ── SECTION ── */
+.section{margin-bottom:32px}
+.section-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.section-icon{
+  width:30px;height:30px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;font-size:14px;flex-shrink:0;
+}
+.section-title{font-size:15px;font-weight:600}
+.section-sub{font-size:12px;color:var(--text2);margin-top:1px}
+.sep{height:1px;background:var(--border);margin-bottom:20px}
+
+/* ── KPI GRID ── */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
+.kpi{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:16px 18px;position:relative;overflow:hidden;transition:border-color .2s;
+}
+.kpi:hover{border-color:var(--border2)}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:2px 2px 0 0}
+.kpi.c-blue::after{background:var(--accent)}
+.kpi.c-green::after{background:var(--green)}
+.kpi.c-red::after{background:var(--red)}
+.kpi.c-amber::after{background:var(--amber)}
+.kpi.c-purple::after{background:var(--purple)}
+.kpi-ico{font-size:16px;margin-bottom:8px}
+.kpi-lbl{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.kpi-val{font-size:26px;font-weight:600;font-family:var(--mono);line-height:1;margin-bottom:4px}
+.kpi-meta{font-size:11px;color:var(--text2)}
+
+/* ── CHART GRID ── */
+.cg2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.cg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.cg1{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px}
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:18px 20px;
+}
+.card.span2{grid-column:span 2}
+.card.span3{grid-column:span 3}
+.card-title{font-size:13px;font-weight:500;margin-bottom:3px}
+.card-sub{font-size:11px;color:var(--text3);margin-bottom:14px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+.leg-dot{width:8px;height:8px;border-radius:2px}
+
+/* ── TABLE ── */
+.tbl-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:14px}
+.tbl-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap}
+.tbl-title{font-size:13px;font-weight:500}
+.tbl-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.search{
+  background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rs);
+  padding:6px 12px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;width:200px;
+}
+.search:focus{border-color:var(--accent)}
+.tbl-wrap{overflow-x:auto;max-height:320px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{
+  background:var(--surface2);padding:9px 14px;text-align:left;
+  font-size:10px;font-weight:500;color:var(--text2);text-transform:uppercase;
+  letter-spacing:.06em;position:sticky;top:0;z-index:2;white-space:nowrap;
+}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+tbody td{padding:9px 14px;color:var(--text);white-space:nowrap}
+.tbl-foot{padding:8px 18px;font-size:11px;color:var(--text3);border-top:1px solid var(--border)}
+
+/* ── BADGES ── */
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:500}
+.badge.ing{background:var(--green2);color:var(--green)}
+.badge.ces{background:var(--red2);color:var(--red)}
+.badge.pend{background:var(--amber2);color:var(--amber)}
+.badge.aten{background:var(--green2);color:var(--green)}
+.badge.vac1{background:var(--amber2);color:var(--amber)}
+.badge.vac2{background:var(--red2);color:var(--red)}
+
+/* ── RANGE BARS ── */
+.range-bars{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.rb-row{display:flex;align-items:center;gap:10px}
+.rb-label{font-size:11px;color:var(--text2);width:110px;flex-shrink:0}
+.rb-track{flex:1;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.rb-fill{height:100%;border-radius:4px;transition:width .6s ease}
+.rb-val{font-size:12px;font-weight:500;font-family:var(--mono);width:28px;text-align:right;flex-shrink:0}
+
+/* ── EMPTY STATE ── */
+.empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:48px 20px;color:var(--text3);gap:10px;
+}
+.empty-ico{font-size:32px;opacity:.4}
+.empty-txt{font-size:13px}
+
+/* ── ANIMATIONS ── */
+.fade-in{animation:fi .4s ease both}
+@keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .cg2,.cg3{grid-template-columns:1fr}
+  .card.span2,.card.span3{grid-column:1}
+  .main{padding:16px}
+  .filters-bar,.header{padding:12px 16px}
+  .upload-panel{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-screen">
+  <div class="login-wrap">
+    <div class="login-logo">👥</div>
+    <div class="login-title">Gestión Humana</div>
+    <div class="login-sub">Ingresa la contraseña para acceder al dashboard</div>
+    <div class="login-label">Contraseña</div>
+    <input type="password" class="login-input" id="pwd" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">Ingresar</button>
+    <div class="login-error" id="login-err"></div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <div class="h-logo">👥</div>
+      <div>
+        <div class="h-title">Dashboard · Gestión Humana</div>
+        <div class="h-sub" id="h-sub">Sin datos cargados</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-pill"><span class="sdot" id="sdot"></span><span id="slabel">Sin archivos</span></div>
+      <button class="hbtn" id="refresh-btn" onclick="triggerRefresh()">↻ Actualizar</button>
+      <button class="hbtn" onclick="toggleUpload()">📂 Cargar Excel</button>
+      <button class="hbtn danger" onclick="doLogout()">Salir</button>
+    </div>
+  </header>
+
+  <!-- UPLOAD PANEL -->
+  <div id="upload-panel" style="display:none">
+    <div class="upload-title">Carga los archivos Excel desde tu computadora o red</div>
+    <div class="upload-grid">
+
+      <div class="upload-card" id="uc-mov">
+        <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'mov')">
+        <div class="uc-icon">📋</div>
+        <div class="uc-name">Movimiento de Personal</div>
+        <div class="uc-desc">Hojas: BAJAS e INGRESOS</div>
+        <div class="uc-status" id="st-mov">Sin cargar</div>
+      </div>
+
+      <div class="upload-card" id="uc-sel">
+        <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'sel')">
+        <div class="uc-icon">🎯</div>
+        <div class="uc-name">Dashboard de Selección</div>
+        <div class="uc-desc">Hoja: Data</div>
+        <div class="uc-status" id="st-sel">Sin cargar</div>
+      </div>
+
+    </div>
+    <div style="margin-top:14px;font-size:11px;color:var(--text3)">
+      ⚠️ Los archivos se procesan localmente en tu navegador. No se envían a ningún servidor.
+    </div>
+  </div>
+
+
+  <!-- NAV BAR -->
+  <nav class="nav-bar" id="nav-bar">
+    <span class="nav-label">Ir a:</span>
+    <a class="nav-btn active" id="nav-mov" href="#sec-mov" onclick="setNav('mov')">👥 Movimientos</a>
+    <a class="nav-btn" id="nav-rq" href="#sec-rq" onclick="setNav('rq')">🎯 Requerimientos</a>
+  </nav>
+
+  <!-- FILTERS -->
+  <div class="filters-bar">
+    <span class="fl">Año:</span>
+    <select class="fsel" id="f-anio" onchange="applyFilters()">
+      <option value="todos">Todos</option>
+    </select>
+    <span class="fl">Unidad:</span>
+    <select class="fsel" id="f-uni" onchange="applyFilters()">
+      <option value="todas">Todas</option>
+    </select>
+    <button class="reset-btn" onclick="resetFilters()">✕ Limpiar filtros</button>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- ── SECCIÓN 1: MOVIMIENTOS ── -->
+    <div id="sec-mov"></div>
+    <div class="section fade-in">
+      <div class="section-header">
+        <div class="section-icon" style="background:var(--blue2)">👥</div>
+        <div>
+          <div class="section-title">Movimientos de Personal</div>
+          <div class="section-sub">Ingresos, ceses y headcount del período seleccionado</div>
+        </div>
+      </div>
+
+      <div class="kpi-row" id="kpi-mov"></div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-title">Headcount activo por unidad</div>
+        <div class="card-sub">Total de colaboradores activos actualmente por unidad operativa</div>
+        <div style="position:relative;height:180px"><canvas id="ch-hc-uni" role="img" aria-label="Headcount activo por unidad"></canvas></div>
+      </div>
+
+      <div class="cg2">
+        <div class="card">
+          <div class="card-title">Ingresos vs Ceses por mes</div>
+          <div class="card-sub">Tendencia mensual en líneas</div>
+          <div class="legend">
+            <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Ingresos</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>Ceses</div>
+          </div>
+          <div style="position:relative;height:210px"><canvas id="ch-mensual" role="img" aria-label="Ingresos vs ceses por mes en lineas"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Ceses: año actual vs año anterior</div>
+          <div class="card-sub">Comparativo mensual entre años</div>
+          <div class="legend" id="leg-yoy"></div>
+          <div style="position:relative;height:210px"><canvas id="ch-yoy" role="img" aria-label="Comparativo ceses año actual vs anterior"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Motivos de cese</div>
+          <div class="card-sub">Distribución por tipo</div>
+          <div style="position:relative;height:240px"><canvas id="ch-motivos" role="img" aria-label="Motivos de cese"></canvas></div>
+        </div>
+        <div class="card span2">
+          <div class="card-title">Tasa de deserción por mes — Ceses / Ingresos (%)</div>
+          <div class="card-sub">Un valor alto indica más salidas que entradas en ese mes</div>
+          <div style="position:relative;height:190px"><canvas id="ch-desercion" role="img" aria-label="Tasa de desercion ceses sobre ingresos por mes"></canvas></div>
+        </div>
+
+        <div class="card span2">
+          <div class="card-title">Antigüedad de cesados</div>
+          <div class="card-sub">Distribución por rango de tiempo trabajado</div>
+          <div class="range-bars" id="rb-antig"></div>
+        </div>
+      </div>
+
+      <!-- Tabla detalle movimientos -->
+      <div class="tbl-card">
+        <div class="tbl-head">
+          <div>
+            <div class="tbl-title">Detalle de movimientos</div>
+            <div class="tbl-sub" id="mov-count"></div>
+          </div>
+          <input class="search" id="srch-mov" placeholder="🔍 Buscar nombre, área..." oninput="renderMovTable()">
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Nombre</th><th>Tipo</th><th>Unidad</th><th>Área</th><th>Cargo</th>
+              <th>F. Ingreso</th><th>F. Cese</th><th>Antigüedad</th><th>Motivo</th><th>Sede</th>
+            </tr></thead>
+            <tbody id="tbody-mov"></tbody>
+          </table>
+        </div>
+        <div class="tbl-foot" id="foot-mov"></div>
+      </div>
+    </div>
+
+    <!-- ── SECCIÓN 2: REQUERIMIENTOS ── -->
+    <div id="sec-rq"></div>
+    <div class="section fade-in" style="animation-delay:.1s">
+      <div class="sep"></div>
+      <div class="section-header">
+        <div class="section-icon" style="background:var(--purple2)">🎯</div>
+        <div>
+          <div class="section-title">Requerimientos de Personal</div>
+          <div class="section-sub">Estado de RQ realizados, atendidos y pendientes acumulados</div>
+        </div>
+      </div>
+
+      <div class="kpi-row" id="kpi-rq"></div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text2)">Responsable GH:</span>
+        <select class="fsel" id="f-resp" onchange="applyFilters()">
+          <option value="todos">Todos</option>
+        </select>
+      </div>
+
+      <div class="cg2">
+        <div class="card">
+          <div class="card-title">RQ realizados vs atendidos por mes</div>
+          <div class="card-sub">Comparativo mensual</div>
+          <div class="legend">
+            <div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>Realizados</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Atendidos</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--amber)"></div>Pendientes acum.</div>
+          </div>
+          <div style="position:relative;height:210px"><canvas id="ch-rq-mes" role="img" aria-label="RQ por mes"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Distribución por unidad</div>
+          <div class="card-sub">RQ totales por unidad operativa</div>
+          <div style="position:relative;height:240px"><canvas id="ch-rq-uni" role="img" aria-label="RQ por unidad"></canvas></div>
+        </div>
+        <div class="card span2">
+          <div class="card-title">Pendientes acumulados por mes</div>
+          <div class="card-sub">RQ que aún no han sido atendidos, agrupados por el mes en que se generaron</div>
+          <div style="position:relative;height:180px"><canvas id="ch-rq-pend" role="img" aria-label="Pendientes por mes origen"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Tabla RQ -->
+      <div class="tbl-card">
+        <div class="tbl-head">
+          <div>
+            <div class="tbl-title">Detalle de requerimientos</div>
+            <div class="tbl-sub" id="rq-count"></div>
+          </div>
+          <input class="search" id="srch-rq" placeholder="🔍 Buscar puesto, unidad..." oninput="renderRQTable()">
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Mes</th><th>Unidad</th><th>Área</th><th>Puesto</th>
+              <th>Responsable GH</th><th>Estado</th><th>Candidato</th>
+              <th>F. Recepción</th><th>F. Ingreso</th><th>T. Proceso</th><th>Eficiencia</th>
+            </tr></thead>
+            <tbody id="tbody-rq"></tbody>
+          </table>
+        </div>
+        <div class="tbl-foot" id="foot-rq"></div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+/* ══════════════════════════════════════════════
+   CONFIG — EDITAR AQUÍ
+══════════════════════════════════════════════ */
+const CFG = {
+  PASSWORD: "rrhh2024",   // ← Cambia la contraseña aquí
+
+  // ══ FUENTE DE DATOS JSON ══
+  // GitHub raw: https://raw.githubusercontent.com/USUARIO/REPO/main/archivo.json
+  // SharePoint: enlace público + &download=1
+  USE_SHAREPOINT_JSON: true,
+  JSON_MOVIMIENTOS: "https://raw.githubusercontent.com/nicocorp711-ui/dashboard-rrhh/main/movimientos.json",
+  JSON_SELECCION:   "https://raw.githubusercontent.com/nicocorp711-ui/dashboard-rrhh/main/seleccion.json",
+
+  // Opcional: trigger HTTP de Power Automate para botón Actualizar
+  TRIGGER_URL_MOV: "",
+  TRIGGER_URL_SEL: "",
+
+  // ══ ESTRUCTURA ESPERADA DE LOS JSON ══
+  // movimientos.json:
+  //   { "ingresos": [ {NOMBRE, DNI, AREA, ...}, ... ],
+  //     "bajas":    [ {NOMBRE, DNI, MOTIVO DE CESE, ...}, ... ] }
+  // seleccion.json:
+  //   { "rq": [ {Fecha de Recepción, Unidad, Puesto, Estado, ...}, ... ] }
+  //
+  // Power Automate — expresión Redactar para movimientos.json:
+  //   json(concat('{"ingresos":', string(body('Filas_INGRESOS')?['value']), ',"bajas":', string(body('Filas_BAJAS')?['value']), '}'))
+  // Power Automate — expresión Redactar para seleccion.json:
+  //   json(concat('{"rq":', string(body('Filas_Data')?['value']), '}'))
+};
+
+const MESES_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+/* ══════════════════════════════════════════════
+   ESTADO GLOBAL
+══════════════════════════════════════════════ */
+let DB = { bajas:[], ingresos:[], rq:[] };
+let FIL = { anio:"todos", mes:"todos", uni:"todas", resp:"todos" };
+let CHARTS = {};
+let filesLoaded = { mov:false, sel:false };
+
+/* ══════════════════════════════════════════════
+   LOGIN
+══════════════════════════════════════════════ */
+function doLogin() {
+  const v = document.getElementById('pwd').value;
+  if (v === CFG.PASSWORD) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    initData();
+    renderAll();
+  } else {
+    const e = document.getElementById('login-err');
+    e.textContent = 'Contraseña incorrecta.';
+    const b = document.querySelector('.login-wrap');
+    b.classList.remove('login-shake'); void b.offsetWidth; b.classList.add('login-shake');
+    document.getElementById('pwd').value = '';
+  }
+}
+
+function setNav(sec) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('nav-' + sec).classList.add('active');
+}
+
+// Highlight nav on scroll
+window.addEventListener('scroll', () => {
+  const rq = document.getElementById('sec-rq');
+  if (!rq) return;
+  const top = rq.getBoundingClientRect().top;
+  if (top < 200) {
+    document.getElementById('nav-mov').classList.remove('active');
+    document.getElementById('nav-rq').classList.add('active');
+  } else {
+    document.getElementById('nav-mov').classList.add('active');
+    document.getElementById('nav-rq').classList.remove('active');
+  }
+});
+function doLogout() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('pwd').value = '';
+}
+
+/* ══════════════════════════════════════════════
+   INIT: SharePoint JSON o Demo
+══════════════════════════════════════════════ */
+async function initData() {
+  if (CFG.USE_SHAREPOINT_JSON && CFG.JSON_MOVIMIENTOS && CFG.JSON_SELECCION) {
+    await loadFromSharePoint();
+  } else {
+    loadDemoData();
+  }
+}
+
+async function loadFromSharePoint() {
+  const dot = document.getElementById('sdot');
+  const lbl = document.getElementById('slabel');
+  lbl.textContent = 'Cargando...';
+  try {
+    const fetchJSON = async url => {
+      const r = await fetch(url, { method:'GET' });
+      if (!r.ok) throw new Error(`Error ${r.status} al obtener datos`);
+      const text = await r.text();
+      try { return JSON.parse(text); }
+      catch(e) { throw new Error('JSON inválido: ' + text.substring(0,80)); }
+    };
+    const [mov, sel] = await Promise.all([
+      fetchJSON(CFG.JSON_MOVIMIENTOS),
+      fetchJSON(CFG.JSON_SELECCION),
+    ]);
+
+
+    // mov = { bajas: [...], ingresos: [...] }
+    // sel = [...] (array directo)
+  
+  // parseMesCol: lee la columna MES del Excel
+  // El valor real es una fecha completa (ej: 1/08/2025 o 2025-08-01)
+  // Devuelve { anio: 2025, mes: 7 } (mes en índice 0-11)
+  function parseMesCol(v) {
+    if (!v) return null;
+    let d = null;
+    if (v instanceof Date) {
+      d = v;
+    } else if (typeof v === 'number') {
+      // Número de serie de Excel: días desde 1/1/1900
+      d = new Date((v - 25569) * 86400 * 1000);
+    } else {
+      const s = String(v).trim();
+      // Intentar parsear "1/08/2025", "08/2025", "2025-08-01", etc.
+      const parts = s.split('/');
+      if (parts.length === 3) {
+        // dd/mm/yyyy o mm/dd/yyyy — asumimos d/mm/yyyy según el formato peruano
+        d = new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`);
+      } else if (parts.length === 2) {
+        // mm/yyyy
+        d = new Date(`${parts[1]}-${parts[0].padStart(2,'0')}-01`);
+      } else if (s.includes('-')) {
+        d = new Date(s);
+      }
+    }
+    if (!d || isNaN(d.getTime())) return null;
+    return { anio: d.getFullYear(), mes: d.getMonth() }; // mes: 0-11
+  }
+
+  const fmtDate = v => {
+      if (!v) return '';
+      if (typeof v === 'string') return v.substring(0,10);
+      return '';
+    };
+    const bajasArr = mov.bajas || mov.salidas || mov.BAJAS || [];
+    const ingresosArr = mov.ingresos || mov.INGRESOS || [];
+    DB.bajas = bajasArr.map(r => ({
+      nombre: `${r['NOMBRE']||''} ${r['APELLIDO PAT.']||''} ${r['APELLIDO MAT.']||''}`.trim(),
+      dni: String(r['DNI']||''),
+      area: r['AREA']||r['ÁREA']||'',
+      cargo: r['CARGO']||'',
+      unidad: r['UNIDAD']||r['Unidad']||'',
+      sede: r['SEDE']||'',
+      fechaIngreso: fmtDate(r['FECHA INGRESO']),
+      fechaCese: fmtDate(r['FECHA TÉRMINO']),
+      motivoCese: r['MOTIVO DE CESE']||'',
+      diasAntig: Number(r['DIAS_ANTIGÜEDAD']||0),
+      hcProm: Number(r['HC PROMEDIO']||0),
+      mesCese: parseMesCol(r['MES']),
+    })).filter(r => r.nombre.trim());
+    DB.ingresos = ingresosArr.map(r => ({
+      nombre: `${r['NOMBRE']||''} ${r['APELLIDO PAT.']||''} ${r['APELLIDO MAT.']||''}`.trim(),
+      dni: String(r['DNI']||''),
+      area: r['AREA']||r['ÁREA']||'',
+      cargo: r['CARGO']||'',
+      unidad: r['UNIDAD']||r['Unidad']||'',
+      sede: r['SEDE']||'',
+      fechaIngreso: fmtDate(r['FECHA INGRESO']),
+      reingreso: r['REINGRESO']||'No',
+      mesIngreso: parseMesCol(r['MES']),
+    })).filter(r => r.nombre.trim());
+    const mesFromDate = d => {
+      if (!d) return '';
+      const m = parseInt((d+'').substring(5,7));
+      return isNaN(m) ? '' : MESES_ES[m-1];
+    };
+    const rqArr = Array.isArray(sel) ? sel : (sel && sel.rq ? sel.rq : []);
+    DB.rq = rqArr.map(r => {
+      const fr = fmtDate(r['Fecha de Recepción']);
+      return {
+        fechaRecepcion: fr,
+        mes: r['Mes'] || mesFromDate(fr),
+        anio: fr ? parseInt(fr.substring(0,4)) : null,
+        unidad: r['Unidad']||'',
+        area: r['Area']||r['Área']||'',
+        puesto: r['Puesto']||'',
+        responsable: r['Responsable - GH']||'',
+        candidato: r['Candidato']||'',
+        estado: r['Estado']||'',
+        fechaIngreso: fmtDate(r['Fecha de Ingreso']),
+        tiempoProceso: r['Tiempo de Proceso  (Recp / Firma)'] ? Number(r['Tiempo de Proceso  (Recp / Firma)']) : null,
+        eficiencia: r['Resultado de Eficiencia']||'',
+      };
+    }).filter(r => r.fechaRecepcion);
+
+    dot.className = 'sdot ok';
+    lbl.textContent = 'GitHub · Actualizado';
+    document.getElementById('h-sub').textContent =
+      'Actualizado: ' + new Date().toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'});
+    buildFilterOptions();
+    renderAll();
+  } catch(e) {
+    console.error('SharePoint JSON error:', e);
+    dot.className = 'sdot';
+    lbl.textContent = 'Error conexión · Demo';
+    loadDemoData();
+  }
+}
+
+async function triggerRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  if (!CFG.USE_SHAREPOINT_JSON) {
+    btn.textContent = '↻ Actualizando...';
+    setTimeout(() => { btn.textContent = '↻ Actualizar'; renderAll(); }, 600);
+    return;
+  }
+  btn.textContent = '↻ Ejecutando flujos...';
+  btn.disabled = true;
+  try {
+    const calls = [];
+    if (CFG.TRIGGER_URL_MOV) calls.push(fetch(CFG.TRIGGER_URL_MOV, {method:'POST'}));
+    if (CFG.TRIGGER_URL_SEL) calls.push(fetch(CFG.TRIGGER_URL_SEL, {method:'POST'}));
+    if (calls.length) await Promise.allSettled(calls);
+    btn.textContent = '↻ Esperando datos...';
+    // Wait 15s for Power Automate to finish, then reload
+    await new Promise(r => setTimeout(r, 15000));
+    await loadFromSharePoint();
+  } catch(e) {
+    console.error(e);
+  }
+  btn.textContent = '↻ Actualizar';
+  btn.disabled = false;
+}
+
+/* ══════════════════════════════════════════════
+   DATOS DEMO
+══════════════════════════════════════════════ */
+function loadDemoData() {
+  DB.bajas = [
+    {nombre:"Carlos Mendoza Ríos",dni:"44123001",area:"Operaciones",cargo:"Operador Scooptram",unidad:"Cía Minera Casma",sede:"Mina",fechaIngreso:"2021-03-10",fechaCese:"2024-01-15",motivoCese:"Renuncia voluntaria",diasAntig:1041,hcProm:185},
+    {nombre:"Luis Quispe Ccoa",dni:"44123002",area:"Mantenimiento",cargo:"Mecánico Equipos",unidad:"Sol de Casma",sede:"Planta",fechaIngreso:"2020-07-01",fechaCese:"2024-01-31",motivoCese:"Fin de contrato",diasAntig:1309,hcProm:185},
+    {nombre:"Jorge Huanca Asto",dni:"44123003",area:"Planta",cargo:"Técnico Laboratorio",unidad:"Cía Minera Casma",sede:"Planta",fechaIngreso:"2022-05-20",fechaCese:"2024-02-15",motivoCese:"Fin de contrato",diasAntig:636,hcProm:188},
+    {nombre:"Pedro Castillo Vega",dni:"44123004",area:"Logística",cargo:"Almacenero",unidad:"Onoaga",sede:"Mina",fechaIngreso:"2023-01-05",fechaCese:"2024-02-28",motivoCese:"Mutuo acuerdo",diasAntig:419,hcProm:188},
+    {nombre:"Carmen Soto Pari",dni:"44123005",area:"SSOMA",cargo:"Inspector SSOMA",unidad:"Sol de Casma",sede:"Mina",fechaIngreso:"2019-11-01",fechaCese:"2024-03-20",motivoCese:"Jubilación",diasAntig:1601,hcProm:190},
+    {nombre:"Silvia Nuñez Ore",dni:"44123006",area:"Gestión Humana",cargo:"Coordinadora RRHH",unidad:"Pyramid Metals",sede:"Lima",fechaIngreso:"2018-06-10",fechaCese:"2024-04-10",motivoCese:"Renuncia voluntaria",diasAntig:2131,hcProm:192},
+    {nombre:"Augusto Pari Mamani",dni:"44123007",area:"Operaciones",cargo:"Motorista",unidad:"Cía Minera Casma",sede:"Mina",fechaIngreso:"2021-09-03",fechaCese:"2024-04-30",motivoCese:"Fin de contrato",diasAntig:970,hcProm:192},
+    {nombre:"Victor Puma Tapia",dni:"44123008",area:"Planta",cargo:"Operador Planta",unidad:"Sol de Casma",sede:"Planta",fechaIngreso:"2020-02-18",fechaCese:"2024-05-15",motivoCese:"Abandono de trabajo",diasAntig:1547,hcProm:190},
+    {nombre:"Dante Arce Loli",dni:"44123009",area:"Mantenimiento",cargo:"Mecánico Equipos",unidad:"Onoaga",sede:"Mina",fechaIngreso:"2019-04-07",fechaCese:"2024-06-12",motivoCese:"Renuncia voluntaria",diasAntig:1892,hcProm:188},
+    {nombre:"Omar Vilca Salas",dni:"44123010",area:"Operaciones",cargo:"Operador Jumbo",unidad:"Cía Minera Casma",sede:"Mina",fechaIngreso:"2021-12-01",fechaCese:"2024-07-31",motivoCese:"Fin de contrato",diasAntig:973,hcProm:186},
+    {nombre:"Raúl Inga Flores",dni:"44123011",area:"Gestión Humana",cargo:"Asistente RRHH",unidad:"Pyramid Metals",sede:"Lima",fechaIngreso:"2023-01-15",fechaCese:"2024-08-20",motivoCese:"Renuncia voluntaria",diasAntig:583,hcProm:185},
+    {nombre:"Teresa Espejo Caro",dni:"44123012",area:"Planta",cargo:"Técnico Laboratorio",unidad:"Sol de Casma",sede:"Planta",fechaIngreso:"2020-10-05",fechaCese:"2024-09-15",motivoCese:"Jubilación",diasAntig:1441,hcProm:184},
+    {nombre:"Norma Condori Lima",dni:"44123013",area:"Logística",cargo:"Asistente Almacén",unidad:"Onoaga",sede:"Mina",fechaIngreso:"2022-08-22",fechaCese:"2024-09-20",motivoCese:"Mutuo acuerdo",diasAntig:759,hcProm:184},
+    {nombre:"Patricia Loli Díaz",dni:"44123014",area:"Mantenimiento",cargo:"Electricista",unidad:"Cía Minera Casma",sede:"Mina",fechaIngreso:"2023-03-10",fechaCese:"2024-10-05",motivoCese:"Fin de contrato",diasAntig:574,hcProm:183},
+  ];
+  DB.ingresos = [
+    {nombre:"Ana Torres Ccopa",dni:"55001",area:"SSOMA",cargo:"Técnico SSOMA",unidad:"Cía Minera Casma",sede:"Mina",fechaIngreso:"2024-01-10",reingreso:"No"},
+    {nombre:"María Ccopa Asto",dni:"55002",area:"Planta",cargo:"Operador Planta",unidad:"Sol de Casma",sede:"Planta",fechaIngreso:"2024-02-01",reingreso:"No"},
+    {nombre:"Rosa Flores Pari",dni:"55003",area:"Gestión Humana",cargo:"Asistente RRHH",unidad:"Pyramid Metals",sede:"Lima",fechaIngreso:"2024-02-12",reingreso:"No"},
+    {nombre:"Elena Vargas Mamani",dni:"55004",area:"Operaciones",cargo:"Técnico Voladura",unidad:"Cía Minera Casma",sede:"Mina",fechaIngreso:"2024-03-03",reingreso:"No"},
+    {nombre:"Roberto Lima Soto",dni:"55005",area:"Mantenimiento",cargo:"Mecánico Equipos",unidad:"Sol de Casma",sede:"Planta",fechaIngreso:"2024-03-08",reingreso:"No"},
+    {nombre:"Félix Ramos Ore",dni:"55006",area:"Planta",cargo:"Operador Chancado",unidad:"Onoaga",sede:"Mina",fechaIngreso:"2024-04-01",reingreso:"No"},
+    {nombre:"Marco Díaz Arce",dni:"55007",area:"Logística",cargo:"Conductor",unidad:"Cía Minera Casma",sede:"Mina",fechaIngreso:"2024-04-15",reingreso:"No"},
+    {nombre:"Sandra Tello Salas",dni:"55008",area:"SSOMA",cargo:"Médico Ocupacional",unidad:"Sol de Casma",sede:"Planta",fechaIngreso:"2024-05-02",reingreso:"No"},
+    {nombre:"Lidia Caro Vilca",dni:"55009",area:"Operaciones",cargo:"Supervisora Turno",unidad:"Onoaga",sede:"Mina",fechaIngreso:"2024-05-06",reingreso:"Sí"},
+    {nombre:"Julio Mamani Inga",dni:"55010",area:"Planta",cargo:"Técnico Laboratorio",unidad:"Cía Minera Casma",sede:"Planta",fechaIngreso:"2024-06-02",reingreso:"No"},
+    {nombre:"Hernán Asto Espejo",dni:"55011",area:"Mantenimiento",cargo:"Soldador",unidad:"Sol de Casma",sede:"Mina",fechaIngreso:"2024-06-10",reingreso:"No"},
+    {nombre:"Gloria Tapia Condori",dni:"55012",area:"Gestión Humana",cargo:"Analista RRHH",unidad:"Pyramid Metals",sede:"Lima",fechaIngreso:"2024-07-01",reingreso:"No"},
+    {nombre:"Ingrid Salas Torres",dni:"55013",area:"SSOMA",cargo:"Técnico SSOMA",unidad:"Cía Minera Casma",sede:"Mina",fechaIngreso:"2024-07-08",reingreso:"No"},
+    {nombre:"Beatriz Ore Flores",dni:"55014",area:"Planta",cargo:"Operador Cianuración",unidad:"Sol de Casma",sede:"Planta",fechaIngreso:"2024-08-05",reingreso:"No"},
+    {nombre:"Mónica Ríos Castillo",dni:"55015",area:"Logística",cargo:"Coordinadora Logística",unidad:"Pyramid Metals",sede:"Lima",fechaIngreso:"2024-08-12",reingreso:"No"},
+    {nombre:"César Apaza Ramos",dni:"55016",area:"Operaciones",cargo:"Operador Scooptram",unidad:"Onoaga",sede:"Mina",fechaIngreso:"2024-09-02",reingreso:"No"},
+    {nombre:"Hernando Quispe Tello",dni:"55017",area:"Mantenimiento",cargo:"Técnico Eléctrico",unidad:"Cía Minera Casma",sede:"Mina",fechaIngreso:"2024-10-07",reingreso:"No"},
+    {nombre:"Diana Vargas Soto",dni:"55018",area:"SSOMA",cargo:"Paramédico",unidad:"Sol de Casma",sede:"Planta",fechaIngreso:"2024-10-14",reingreso:"No"},
+  ];
+  DB.rq = [
+    {fechaRecepcion:"2024-01-08",mes:"Ene",anio:2024,unidad:"Cía Minera Casma",area:"Operaciones",puesto:"Operador Scooptram",responsable:"Ana Torres",candidato:"César Apaza",estado:"Atendido",fechaIngreso:"2024-01-25",tiempoProceso:17,eficiencia:"Eficiente"},
+    {fechaRecepcion:"2024-01-15",mes:"Ene",anio:2024,unidad:"Sol de Casma",area:"Planta",puesto:"Técnico Laboratorio",responsable:"Ana Torres",candidato:"",estado:"Pendiente",fechaIngreso:"",tiempoProceso:null,eficiencia:""},
+    {fechaRecepcion:"2024-01-20",mes:"Ene",anio:2024,unidad:"Onoaga",area:"Mantenimiento",puesto:"Mecánico Equipos",responsable:"Gloria Tapia",candidato:"Roberto Lima",estado:"Atendido",fechaIngreso:"2024-02-10",tiempoProceso:21,eficiencia:"Eficiente"},
+    {fechaRecepcion:"2024-02-05",mes:"Feb",anio:2024,unidad:"Cía Minera Casma",area:"SSOMA",puesto:"Técnico SSOMA",responsable:"Ana Torres",candidato:"Elena Vargas",estado:"Atendido",fechaIngreso:"2024-03-03",tiempoProceso:27,eficiencia:"Regular"},
+    {fechaRecepcion:"2024-02-10",mes:"Feb",anio:2024,unidad:"Sol de Casma",area:"Operaciones",puesto:"Supervisora Turno",responsable:"Gloria Tapia",candidato:"Lidia Caro",estado:"Atendido",fechaIngreso:"2024-02-28",tiempoProceso:18,eficiencia:"Eficiente"},
+    {fechaRecepcion:"2024-02-18",mes:"Feb",anio:2024,unidad:"Pyramid Metals",area:"Gestión Humana",puesto:"Asistente RRHH",responsable:"Ana Torres",candidato:"Rosa Flores",estado:"Atendido",fechaIngreso:"2024-03-10",tiempoProceso:21,eficiencia:"Eficiente"},
+    {fechaRecepcion:"2024-03-04",mes:"Mar",anio:2024,unidad:"Onoaga",area:"Planta",puesto:"Operador Chancado",responsable:"Gloria Tapia",candidato:"Félix Ramos",estado:"Atendido",fechaIngreso:"2024-04-01",tiempoProceso:28,eficiencia:"Regular"},
+    {fechaRecepcion:"2024-03-12",mes:"Mar",anio:2024,unidad:"Cía Minera Casma",area:"Logística",puesto:"Conductor",responsable:"Ana Torres",candidato:"",estado:"Pendiente",fechaIngreso:"",tiempoProceso:null,eficiencia:""},
+    {fechaRecepcion:"2024-04-03",mes:"Abr",anio:2024,unidad:"Sol de Casma",area:"Mantenimiento",puesto:"Soldador",responsable:"Ana Torres",candidato:"Hernán Asto",estado:"Atendido",fechaIngreso:"2024-05-15",tiempoProceso:42,eficiencia:"Lento"},
+    {fechaRecepcion:"2024-04-10",mes:"Abr",anio:2024,unidad:"Pyramid Metals",area:"SSOMA",puesto:"Médico Ocupacional",responsable:"Gloria Tapia",candidato:"Sandra Tello",estado:"Atendido",fechaIngreso:"2024-05-02",tiempoProceso:22,eficiencia:"Eficiente"},
+    {fechaRecepcion:"2024-04-22",mes:"Abr",anio:2024,unidad:"Onoaga",area:"Operaciones",puesto:"Operador Scooptram",responsable:"Ana Torres",candidato:"",estado:"Pendiente",fechaIngreso:"",tiempoProceso:null,eficiencia:""},
+    {fechaRecepcion:"2024-05-06",mes:"May",anio:2024,unidad:"Cía Minera Casma",area:"Planta",puesto:"Técnico Laboratorio",responsable:"Gloria Tapia",candidato:"Julio Mamani",estado:"Atendido",fechaIngreso:"2024-06-02",tiempoProceso:27,eficiencia:"Regular"},
+    {fechaRecepcion:"2024-05-14",mes:"May",anio:2024,unidad:"Sol de Casma",area:"Logística",puesto:"Coordinadora Logística",responsable:"Ana Torres",candidato:"Mónica Ríos",estado:"Atendido",fechaIngreso:"2024-06-20",tiempoProceso:37,eficiencia:"Regular"},
+    {fechaRecepcion:"2024-06-03",mes:"Jun",anio:2024,unidad:"Onoaga",area:"Mantenimiento",puesto:"Electricista",responsable:"Gloria Tapia",candidato:"",estado:"Pendiente",fechaIngreso:"",tiempoProceso:null,eficiencia:""},
+    {fechaRecepcion:"2024-06-11",mes:"Jun",anio:2024,unidad:"Pyramid Metals",area:"Gestión Humana",puesto:"Analista RRHH",responsable:"Ana Torres",candidato:"Gloria Tapia",estado:"Atendido",fechaIngreso:"2024-07-01",tiempoProceso:20,eficiencia:"Eficiente"},
+    {fechaRecepcion:"2024-07-02",mes:"Jul",anio:2024,unidad:"Cía Minera Casma",area:"SSOMA",puesto:"Técnico SSOMA",responsable:"Gloria Tapia",candidato:"Ingrid Salas",estado:"Atendido",fechaIngreso:"2024-07-08",tiempoProceso:6,eficiencia:"Eficiente"},
+    {fechaRecepcion:"2024-07-15",mes:"Jul",anio:2024,unidad:"Sol de Casma",area:"Planta",puesto:"Operador Cianuración",responsable:"Ana Torres",candidato:"Beatriz Ore",estado:"Atendido",fechaIngreso:"2024-08-05",tiempoProceso:21,eficiencia:"Eficiente"},
+    {fechaRecepcion:"2024-08-05",mes:"Ago",anio:2024,unidad:"Onoaga",area:"Operaciones",puesto:"Operador Jumbo",responsable:"Gloria Tapia",candidato:"",estado:"Pendiente",fechaIngreso:"",tiempoProceso:null,eficiencia:""},
+    {fechaRecepcion:"2024-08-12",mes:"Ago",anio:2024,unidad:"Pyramid Metals",area:"Logística",puesto:"Asistente Almacén",responsable:"Ana Torres",candidato:"",estado:"Pendiente",fechaIngreso:"",tiempoProceso:null,eficiencia:""},
+    {fechaRecepcion:"2024-09-03",mes:"Sep",anio:2024,unidad:"Cía Minera Casma",area:"Operaciones",puesto:"Operador Scooptram",responsable:"Gloria Tapia",candidato:"César Apaza",estado:"Atendido",fechaIngreso:"2024-09-20",tiempoProceso:17,eficiencia:"Eficiente"},
+    {fechaRecepcion:"2024-09-10",mes:"Sep",anio:2024,unidad:"Sol de Casma",area:"Mantenimiento",puesto:"Técnico Eléctrico",responsable:"Ana Torres",candidato:"Hernando Quispe",estado:"Atendido",fechaIngreso:"2024-10-07",tiempoProceso:27,eficiencia:"Regular"},
+    {fechaRecepcion:"2024-10-02",mes:"Oct",anio:2024,unidad:"Onoaga",area:"SSOMA",puesto:"Paramédico",responsable:"Gloria Tapia",candidato:"Diana Vargas",estado:"Atendido",fechaIngreso:"2024-10-14",tiempoProceso:12,eficiencia:"Eficiente"},
+    {fechaRecepcion:"2024-10-15",mes:"Oct",anio:2024,unidad:"Pyramid Metals",area:"Planta",puesto:"Operador Planta",responsable:"Ana Torres",candidato:"",estado:"Pendiente",fechaIngreso:"",tiempoProceso:null,eficiencia:""},
+  ];
+  updateStatus();
+  buildFilterOptions();
+}
+
+/* ══════════════════════════════════════════════
+   CARGA DE EXCEL REAL
+══════════════════════════════════════════════ */
+function toggleUpload() {
+  const p = document.getElementById('upload-panel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+function loadFile(evt, tipo) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const st = document.getElementById(`st-${tipo}`);
+  const uc = document.getElementById(`uc-${tipo}`);
+  st.textContent = 'Procesando...';
+  st.className = 'uc-status';
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'binary', cellDates:true});
+      if (tipo === 'mov') parseMovPersonal(wb);
+      if (tipo === 'sel') parseSeleccion(wb);
+      st.textContent = `✓ ${file.name}`;
+      st.className = 'uc-status ok';
+      uc.classList.add('loaded');
+      filesLoaded[tipo] = true;
+      updateStatus();
+      buildFilterOptions();
+      renderAll();
+    } catch(err) {
+      st.textContent = `✗ Error: ${err.message}`;
+      st.className = 'uc-status err';
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function sheetToArr(wb, sheetName) {
+  const ws = wb.Sheets[sheetName];
+  if (!ws) return [];
+  return XLSX.utils.sheet_to_json(ws, {defval:""});
+}
+
+function parseMovPersonal(wb) {
+  const bajas = sheetToArr(wb, 'BAJAS');
+  const ingresos = sheetToArr(wb, 'INGRESOS');
+
+  // parseMesCol: lee la columna MES del Excel
+  // El valor real es una fecha completa (ej: 1/08/2025 o 2025-08-01)
+  // Devuelve { anio: 2025, mes: 7 } (mes en índice 0-11)
+  function parseMesCol(v) {
+    if (!v) return null;
+    let d = null;
+    if (v instanceof Date) {
+      d = v;
+    } else if (typeof v === 'number') {
+      // Número de serie de Excel: días desde 1/1/1900
+      d = new Date((v - 25569) * 86400 * 1000);
+    } else {
+      const s = String(v).trim();
+      // Intentar parsear "1/08/2025", "08/2025", "2025-08-01", etc.
+      const parts = s.split('/');
+      if (parts.length === 3) {
+        // dd/mm/yyyy o mm/dd/yyyy — asumimos d/mm/yyyy según el formato peruano
+        d = new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`);
+      } else if (parts.length === 2) {
+        // mm/yyyy
+        d = new Date(`${parts[1]}-${parts[0].padStart(2,'0')}-01`);
+      } else if (s.includes('-')) {
+        d = new Date(s);
+      }
+    }
+    if (!d || isNaN(d.getTime())) return null;
+    return { anio: d.getFullYear(), mes: d.getMonth() }; // mes: 0-11
+  }
+
+  const fmtDate = v => {
+    if (!v) return '';
+    if (v instanceof Date) return v.toISOString().substring(0,10);
+    return String(v).substring(0,10);
+  };
+  DB.bajas = bajas.map(r => ({
+    nombre: `${r['NOMBRE']||''} ${r['APELLIDO PAT.']||''} ${r['APELLIDO MAT.']||''}`.trim(),
+    dni: String(r['DNI']||''),
+    area: r['AREA']||r['ÁREA']||'',
+    cargo: r['CARGO']||'',
+    unidad: r['UNIDAD']||r['Unidad']||'',
+    sede: r['SEDE']||'',
+    fechaIngreso: fmtDate(r['FECHA INGRESO']),
+    fechaCese: fmtDate(r['FECHA TÉRMINO']),
+    motivoCese: r['MOTIVO DE CESE']||'',
+    diasAntig: Number(r['DIAS_ANTIGÜEDAD']||0),
+    hcProm: Number(r['HC PROMEDIO']||0),
+    mesCese: parseMesCol(r['MES']),
+  })).filter(r => r.nombre.trim());
+  DB.ingresos = ingresos.map(r => ({
+    nombre: `${r['NOMBRE']||''} ${r['APELLIDO PAT.']||''} ${r['APELLIDO MAT.']||''}`.trim(),
+    dni: String(r['DNI']||''),
+    area: r['AREA']||r['ÁREA']||'',
+    cargo: r['CARGO']||'',
+    unidad: r['UNIDAD']||r['Unidad']||'',
+    sede: r['SEDE']||'',
+    fechaIngreso: fmtDate(r['FECHA INGRESO']),
+    reingreso: r['REINGRESO']||'No',
+    mesIngreso: parseMesCol(r['MES']),
+  })).filter(r => r.nombre.trim());
+}
+
+function parseSeleccion(wb) {
+  const data = sheetToArr(wb, 'Data');
+
+  // parseMesCol: lee la columna MES del Excel
+  // El valor real es una fecha completa (ej: 1/08/2025 o 2025-08-01)
+  // Devuelve { anio: 2025, mes: 7 } (mes en índice 0-11)
+  function parseMesCol(v) {
+    if (!v) return null;
+    let d = null;
+    if (v instanceof Date) {
+      d = v;
+    } else if (typeof v === 'number') {
+      // Número de serie de Excel: días desde 1/1/1900
+      d = new Date((v - 25569) * 86400 * 1000);
+    } else {
+      const s = String(v).trim();
+      // Intentar parsear "1/08/2025", "08/2025", "2025-08-01", etc.
+      const parts = s.split('/');
+      if (parts.length === 3) {
+        // dd/mm/yyyy o mm/dd/yyyy — asumimos d/mm/yyyy según el formato peruano
+        d = new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`);
+      } else if (parts.length === 2) {
+        // mm/yyyy
+        d = new Date(`${parts[1]}-${parts[0].padStart(2,'0')}-01`);
+      } else if (s.includes('-')) {
+        d = new Date(s);
+      }
+    }
+    if (!d || isNaN(d.getTime())) return null;
+    return { anio: d.getFullYear(), mes: d.getMonth() }; // mes: 0-11
+  }
+
+  const fmtDate = v => {
+    if (!v) return '';
+    if (v instanceof Date) return v.toISOString().substring(0,10);
+    return String(v).substring(0,10);
+  };
+  const mesFromDate = d => {
+    if (!d) return '';
+    const m = parseInt((d+'').substring(5,7));
+    return isNaN(m) ? '' : MESES_ES[m-1];
+  };
+  DB.rq = data.map(r => {
+    const fr = fmtDate(r['Fecha de Recepción']);
+    const anio = fr ? parseInt(fr.substring(0,4)) : null;
+    return {
+      fechaRecepcion: fr,
+      mes: r['Mes'] || mesFromDate(fr),
+      anio,
+      unidad: r['Unidad']||'',
+      area: r['Area']||r['Área']||'',
+      puesto: r['Puesto']||'',
+      responsable: r['Responsable - GH']||'',
+      candidato: r['Candidato']||'',
+      estado: r['Estado']||'',
+      fechaIngreso: fmtDate(r['Fecha de Ingreso']),
+      tiempoProceso: r['Tiempo de Proceso  (Recp / Firma)'] ? Number(r['Tiempo de Proceso  (Recp / Firma)']) : null,
+      eficiencia: r['Resultado de Eficiencia']||'',
+    };
+  }).filter(r => r.fechaRecepcion);
+}
+
+/* ══════════════════════════════════════════════
+   FILTROS
+══════════════════════════════════════════════ */
+function buildFilterOptions() {
+  const all = [...DB.bajas, ...DB.ingresos];
+  // Detectar años desde columna MES del Excel (más preciso) o desde fechas
+  // Solo años donde hay ceses O ingresos reales del período
+  // NO incluir años de contratación histórica de cesados
+  const anioSet = new Set();
+  DB.bajas.forEach(r => {
+    if (r.mesCese)        anioSet.add(String(r.mesCese.anio));
+    else if (r.fechaCese) anioSet.add(r.fechaCese.substring(0,4));
+  });
+  DB.ingresos.forEach(r => {
+    if (r.mesIngreso)        anioSet.add(String(r.mesIngreso.anio));
+    else if (r.fechaIngreso) anioSet.add(r.fechaIngreso.substring(0,4));
+  });
+  const anios = [...anioSet].filter(a => a && a.length === 4).sort().reverse();
+  const unis = [...new Set([...all.map(r=>r.unidad), ...DB.rq.map(r=>r.unidad)].filter(Boolean))].sort();
+
+  const sa = document.getElementById('f-anio');
+  // Reconstruir opciones
+  sa.innerHTML = anios.map(a=>`<option value="${a}">${a}</option>`).join('');
+  // Restaurar selección previa si sigue siendo válida; si no, usar el más reciente
+  const anioToSet = (FIL.anio && FIL.anio !== 'todos' && anios.includes(FIL.anio))
+    ? FIL.anio
+    : (anios[0] || String(new Date().getFullYear()));
+  FIL.anio = anioToSet;
+  sa.value = anioToSet;
+
+  const su = document.getElementById('f-uni');
+  su.innerHTML = '<option value="todas">Todas las unidades</option>' + unis.map(u=>`<option value="${u}">${u}</option>`).join('');
+
+  // Responsable GH options
+  const resps = [...new Set(DB.rq.map(r=>r.responsable).filter(Boolean))].sort();
+  const sr = document.getElementById('f-resp');
+  if(sr) sr.innerHTML = '<option value="todos">Todos</option>' + resps.map(r=>`<option value="${r}">${r}</option>`).join('');
+}
+
+function applyFilters() {
+  FIL.anio = document.getElementById('f-anio').value;
+  FIL.mes = 'todos';
+  FIL.uni = document.getElementById('f-uni').value;
+  const respEl = document.getElementById('f-resp'); FIL.resp = respEl ? respEl.value : 'todos';
+  renderAll();
+}
+
+function resetFilters() {
+  const saEl = document.getElementById('f-anio'); if(saEl && saEl.options.length) { saEl.value = saEl.options[0].value; FIL.anio = saEl.options[0].value; } else { FIL.anio = 'todos'; }
+
+  FIL.mes='todos'; FIL.uni='todas'; FIL.resp='todos';
+  document.getElementById('f-uni').value='todas';
+  const respEl3=document.getElementById('f-resp'); if(respEl3) respEl3.value='todos';
+  renderAll();
+}
+
+function matchFilter(r) {
+  // Para ingresos usa mesIngreso del Excel si está disponible
+  const mi = r.mesIngreso;
+  const fecha = r.fechaIngreso || r.fechaCese || r.fechaRecepcion || '';
+  const anioOk = FIL.anio === 'todos' || (mi ? mi.anio === parseInt(FIL.anio) : fecha.startsWith(FIL.anio));
+  const mesOk = FIL.mes === 'todos' || (mi ? MESES_ES[mi.mes] === FIL.mes : (()=>{
+    const m = parseInt(fecha.substring(5,7));
+    return !isNaN(m) && MESES_ES[m-1] === FIL.mes;
+  })());
+  const uni = r.unidad || '';
+  const uniOk = FIL.uni === 'todas' || uni === FIL.uni;
+  return anioOk && mesOk && uniOk;
+}
+// Para bajas: filtrar por fechaCESE (no fechaIngreso) para que el año/mes
+// corresponda al momento en que la persona cesó, no cuando ingresó.
+function matchFilterBaja(r) {
+  // Usa columna MES del Excel si está disponible
+  const mc = r.mesCese;
+  const anioOk = FIL.anio === 'todos' || (mc ? mc.anio === parseInt(FIL.anio) : (r.fechaCese||'').startsWith(FIL.anio));
+  const mesOk = FIL.mes === 'todos' || (mc ? MESES_ES[mc.mes] === FIL.mes : (()=>{
+    const m = parseInt((r.fechaCese||'').substring(5,7));
+    return !isNaN(m) && MESES_ES[m-1] === FIL.mes;
+  })());
+  const uniOk = FIL.uni === 'todas' || (r.unidad||'') === FIL.uni;
+  return anioOk && mesOk && uniOk;
+}
+function matchFilterRQ(r) {
+  // Same as matchFilter but uses fechaRecepcion as primary date and adds resp filter
+  const fecha = r.fechaRecepcion || '';
+  const anioOk = FIL.anio === 'todos' || fecha.startsWith(FIL.anio);
+  const mesOk = FIL.mes === 'todos' || (()=>{
+    const m = parseInt(fecha.substring(5,7));
+    return !isNaN(m) && MESES_ES[m-1] === FIL.mes;
+  })();
+  const uniOk = FIL.uni === 'todas' || (r.unidad||'') === FIL.uni;
+  const respOk = FIL.resp === 'todos' || (r.responsable||'') === FIL.resp;
+  return anioOk && mesOk && uniOk && respOk;
+}
+
+/* ══════════════════════════════════════════════
+   RENDER ALL
+══════════════════════════════════════════════ */
+function renderAll() {
+  renderMovKPIs();
+  renderMovCharts();
+  renderMovTable();
+  renderRQKPIs();
+  renderRQCharts();
+  renderRQTable();
+  document.getElementById('h-sub').textContent =
+    'Actualizado: ' + new Date().toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'});
+}
+
+/* ══════════════════════════════════════════════
+   MOVIMIENTOS KPIs
+══════════════════════════════════════════════ */
+function renderMovKPIs() {
+  // KPIs siempre muestran el MES ACTUAL (independiente del filtro de año)
+  const ahora = new Date();
+  const mesActual = ahora.getMonth();      // 0-11
+  const anioActual = ahora.getFullYear();
+
+  // Ingresos del mes actual
+  const ingMesActual = DB.ingresos.filter(r => {
+    const mi = r.mesIngreso;
+    if (mi) return mi.mes === mesActual && mi.anio === anioActual;
+    const f = r.fechaIngreso || '';
+    return parseInt(f.substring(0,4)) === anioActual && parseInt(f.substring(5,7))-1 === mesActual;
+  });
+
+  // Ceses del mes actual
+  const cesMesActual = DB.bajas.filter(r => {
+    const mc = r.mesCese;
+    if (mc) return mc.mes === mesActual && mc.anio === anioActual;
+    const f = r.fechaCese || '';
+    return parseInt(f.substring(0,4)) === anioActual && parseInt(f.substring(5,7))-1 === mesActual;
+  });
+
+  // Headcount activo: total sin fecha de cese (foto actual)
+  const activos = DB.ingresos.filter(r => !DB.bajas.find(b => b.dni === r.dni)).length;
+
+  // Rotación del mes actual: ceses / HC promedio
+  const hcProm = cesMesActual.length > 0 ? cesMesActual[0].hcProm : activos;
+  const rotacion = hcProm > 0 ? ((cesMesActual.length / hcProm) * 100).toFixed(1) : '0.0';
+
+  const mesNombre = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][mesActual];
+  const periodoLabel = `${mesNombre} ${anioActual}`;
+
+  document.getElementById('kpi-mov').innerHTML = `
+    <div class="kpi c-blue"><div class="kpi-ico">📋</div><div class="kpi-lbl">Headcount activo</div><div class="kpi-val">${activos}</div><div class="kpi-meta">A la fecha</div></div>
+    <div class="kpi c-green"><div class="kpi-ico">➕</div><div class="kpi-lbl">Ingresos</div><div class="kpi-val">${ingMesActual.length}</div><div class="kpi-meta">${periodoLabel}</div></div>
+    <div class="kpi c-red"><div class="kpi-ico">➖</div><div class="kpi-lbl">Ceses</div><div class="kpi-val">${cesMesActual.length}</div><div class="kpi-meta">${periodoLabel}</div></div>
+    <div class="kpi c-amber"><div class="kpi-ico">🔄</div><div class="kpi-lbl">Rotación</div><div class="kpi-val">${rotacion}%</div><div class="kpi-meta">${periodoLabel}</div></div>
+  `;
+}
+
+/* ══════════════════════════════════════════════
+   MOVIMIENTOS CHARTS
+══════════════════════════════════════════════ */
+function renderMovCharts() {
+  const bajasFil = DB.bajas.filter(matchFilterBaja);
+  const ingFil = DB.ingresos.filter(matchFilter);
+
+  // Headcount activo por unidad (sin filtro de año — foto actual, solo filtro unidad)
+  const activosTodos = DB.ingresos.filter(r => {
+    const esActivo = !DB.bajas.find(b => b.dni === r.dni);
+    const uniOk = FIL.uni === 'todas' || r.unidad === FIL.uni;
+    return esActivo && uniOk;
+  });
+  const hcUnis = [...new Set(DB.ingresos.map(r=>r.unidad).filter(Boolean))].sort();
+  const hcData = hcUnis.map(u => activosTodos.filter(r=>r.unidad===u).length);
+  const hcColors = ['#4f8ef7','#2dd4a0','#f5a52a','#a78bfa','#f26b6b','#80cbc4'];
+  destroyChart('hcuni');
+  CHARTS.hcuni = new Chart(document.getElementById('ch-hc-uni'),{
+    type:'bar',
+    data:{labels:hcUnis,datasets:[{
+      data:hcData,
+      backgroundColor:hcColors.slice(0,hcUnis.length),
+      borderRadius:6,
+      borderSkipped:false,
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>`${ctx.raw} activos`}}
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#7b82a0',font:{size:11}}},
+        y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#7b82a0',font:{size:11}},beginAtZero:true,precision:0}
+      }
+    }
+  });
+
+  // Mensual — usa columna MES del Excel si está disponible, si no calcula desde fecha
+  const ingMes = Array(12).fill(0);
+  const cesMes = Array(12).fill(0);
+  ingFil.forEach(r=>{
+    const idx = r.mesIngreso ? r.mesIngreso.mes : parseInt((r.fechaIngreso||'').substring(5,7)) - 1;
+    if (idx >= 0 && idx < 12) ingMes[idx]++;
+  });
+  bajasFil.forEach(r=>{
+    const idx = r.mesCese ? r.mesCese.mes : parseInt((r.fechaCese||'').substring(5,7)) - 1;
+    if (idx >= 0 && idx < 12) cesMes[idx]++;
+  });
+
+  destroyChart('mensual');
+  CHARTS.mensual = new Chart(document.getElementById('ch-mensual'),{
+    type:'bar',
+    data:{labels:MESES_ES,datasets:[
+      {label:'Ingresos',data:ingMes,backgroundColor:'rgba(45,212,160,0.75)',borderRadius:4,borderSkipped:false},
+      {label:'Ceses',data:cesMes,backgroundColor:'rgba(242,107,107,0.75)',borderRadius:4,borderSkipped:false},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#7b82a0',font:{size:11},autoSkip:false}},
+        y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#7b82a0',font:{size:11}},beginAtZero:true,precision:0}
+      }
+    }
+  });
+
+  // YoY: Ceses año actual vs año anterior
+  // Usa el año del filtro como "actual". Aplica filtro de Unidad pero NO de año/mes
+  // para poder comparar ambos años correctamente.
+  const anioActual = parseInt(FIL.anio) || new Date().getFullYear();
+  const anioAnterior = anioActual - 1;
+  const cesActual = Array(12).fill(0);
+  const cesAnterior = Array(12).fill(0);
+  DB.bajas.filter(r => FIL.uni === 'todas' || r.unidad === FIL.uni).forEach(r => {
+    let a, m;
+    if (r.mesCese) {
+      a = r.mesCese.anio;
+      m = r.mesCese.mes + 1; // convertir a 1-12
+    } else {
+      const fecha = r.fechaCese || '';
+      if (!fecha) return;
+      a = parseInt(fecha.substring(0,4));
+      m = parseInt(fecha.substring(5,7));
+    }
+    if (!m) return;
+    if (a === anioActual) cesActual[m-1]++;
+    if (a === anioAnterior) cesAnterior[m-1]++;
+  });
+  const legYoY = document.getElementById('leg-yoy');
+  if(legYoY) legYoY.innerHTML = `
+    <div class="leg-item"><div class="leg-dot" style="background:#f26b6b"></div>${anioActual}</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#7b82a0;opacity:.6"></div>${anioAnterior}</div>
+  `;
+  destroyChart('yoy');
+  CHARTS.yoy = new Chart(document.getElementById('ch-yoy'),{
+    type:'line',
+    data:{labels:MESES_ES,datasets:[
+      {label:String(anioActual),data:cesActual,borderColor:'#f26b6b',
+       backgroundColor:'rgba(242,107,107,0.1)',fill:true,tension:0.4,
+       pointRadius:4,pointHoverRadius:6,borderWidth:2},
+      {label:String(anioAnterior),data:cesAnterior,borderColor:'#555c70',
+       backgroundColor:'rgba(85,92,112,0.08)',fill:true,tension:0.4,
+       pointRadius:3,pointHoverRadius:5,borderWidth:1.5,borderDash:[5,4]},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#7b82a0',font:{size:11}}},
+        y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#7b82a0',font:{size:11}},beginAtZero:true,precision:0}
+      }
+    }
+  });
+
+  // Tasa de deserción: Ceses / Ingresos * 100 por mes
+  const tasaMes = MESES_ES.map((_,i) => {
+    if (ingMes[i] === 0) return null;
+    return Math.round((cesMes[i] / ingMes[i]) * 100);
+  });
+  const tasaColors = tasaMes.map(v => v === null ? 'rgba(123,130,160,0.3)' : v > 100 ? 'rgba(242,107,107,0.85)' : v > 60 ? 'rgba(245,165,42,0.85)' : 'rgba(45,212,160,0.75)');
+  destroyChart('desercion');
+  CHARTS.desercion = new Chart(document.getElementById('ch-desercion'),{
+    type:'bar',
+    data:{labels:MESES_ES,datasets:[{
+      label:'Deserción %',
+      data:tasaMes,
+      backgroundColor:tasaColors,
+      borderRadius:4,
+      borderSkipped:false,
+    },{
+      label:'Referencia 100%',
+      data:Array(12).fill(100),
+      type:'line',
+      borderColor:'rgba(255,255,255,0.2)',
+      borderDash:[4,4],
+      borderWidth:1,
+      pointRadius:0,
+      fill:false,
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>ctx.dataset.label==='Deserción %'?`${ctx.raw}% (ceses/ingresos)`:''}}
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#7b82a0',font:{size:11},autoSkip:false}},
+        y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#7b82a0',font:{size:11},callback:v=>v+'%'},beginAtZero:true,suggestedMax:150}
+      }
+    }
+  });
+
+  // Motivos
+  const mMap = {};
+  bajasFil.forEach(r=>{ if(r.motivoCese) mMap[r.motivoCese]=(mMap[r.motivoCese]||0)+1; });
+  const mL=Object.keys(mMap), mD=Object.values(mMap);
+  const mC=['#f26b6b','#4f8ef7','#2dd4a0','#f5a52a','#a78bfa','#e57373','#80cbc4'];
+  destroyChart('motivos');
+  CHARTS.motivos = new Chart(document.getElementById('ch-motivos'),{
+    type:'doughnut',
+    data:{labels:mL,datasets:[{data:mD,backgroundColor:mC,borderWidth:0,hoverOffset:5}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+      plugins:{legend:{position:'bottom',labels:{color:'#7b82a0',font:{size:11},boxWidth:10,padding:10}}}}
+  });
+
+  // Antigüedad rangos (barras)
+  const rangos = [
+    {label:'< 3 meses',min:0,max:90,color:'#4f8ef7'},
+    {label:'3 - 6 meses',min:90,max:180,color:'#2dd4a0'},
+    {label:'6 - 12 meses',min:180,max:365,color:'#f5a52a'},
+    {label:'1 - 2 años',min:365,max:730,color:'#a78bfa'},
+    {label:'> 2 años',min:730,max:Infinity,color:'#f26b6b'},
+  ];
+  const counts = rangos.map(rng => bajasFil.filter(r=>r.diasAntig>=rng.min && r.diasAntig<rng.max).length);
+  const maxC = Math.max(...counts,1);
+  document.getElementById('rb-antig').innerHTML = rangos.map((rng,i)=>`
+    <div class="rb-row">
+      <div class="rb-label">${rng.label}</div>
+      <div class="rb-track"><div class="rb-fill" style="width:${Math.round(counts[i]/maxC*100)}%;background:${rng.color}"></div></div>
+      <div class="rb-val" style="color:${rng.color}">${counts[i]}</div>
+    </div>
+  `).join('');
+}
+
+/* ══════════════════════════════════════════════
+   MOVIMIENTOS TABLE
+══════════════════════════════════════════════ */
+function renderMovTable() {
+  const q = (document.getElementById('srch-mov').value||'').toLowerCase();
+  const bajasFil = DB.bajas.filter(matchFilterBaja);
+  const ingFil = DB.ingresos.filter(matchFilter);
+  let rows = [
+    ...ingFil.map(r=>({...r,tipo:'ingreso',fechaCese:'',motivoCese:'',diasAntig:0})),
+    ...bajasFil.map(r=>({...r,tipo:'cese'})),
+  ];
+  if(q) rows=rows.filter(r=>
+    (r.nombre||'').toLowerCase().includes(q)||
+    (r.area||'').toLowerCase().includes(q)||
+    (r.cargo||'').toLowerCase().includes(q)||
+    (r.unidad||'').toLowerCase().includes(q)
+  );
+  const fmt=d=>d?new Date(d+'T12:00:00').toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'}):'—';
+  const antigStr=d=>!d?'—':d<90?'< 3 m':d<180?'3-6 m':d<365?'6-12 m':d<730?'1-2 a':'> 2 a';
+  document.getElementById('tbody-mov').innerHTML=rows.map(r=>`
+    <tr>
+      <td>${r.nombre}</td>
+      <td><span class="badge ${r.tipo==='ingreso'?'ing':'ces'}">${r.tipo==='ingreso'?'Ingreso':'Cese'}</span></td>
+      <td>${r.unidad||'—'}</td><td>${r.area||'—'}</td><td>${r.cargo||'—'}</td>
+      <td>${fmt(r.fechaIngreso)}</td><td>${fmt(r.fechaCese)}</td>
+      <td>${antigStr(r.diasAntig)}</td><td>${r.motivoCese||'—'}</td><td>${r.sede||'—'}</td>
+    </tr>`).join('');
+  document.getElementById('mov-count').textContent=`${rows.length} registros`;
+  document.getElementById('foot-mov').textContent=`Mostrando ${rows.length} movimientos`;
+}
+
+/* ══════════════════════════════════════════════
+   RQ KPIs
+══════════════════════════════════════════════ */
+function renderRQKPIs() {
+  const rqFil = DB.rq.filter(matchFilterRQ);
+  const realizados = rqFil.length;
+  const atendidos = rqFil.filter(r=>r.estado==='Atendido').length;
+  const pendientes = rqFil.filter(r=>r.estado==='Pendiente').length;
+  const tiempos = rqFil.filter(r=>r.tiempoProceso).map(r=>r.tiempoProceso);
+  const tProm = tiempos.length ? Math.round(tiempos.reduce((a,b)=>a+b,0)/tiempos.length) : 0;
+  document.getElementById('kpi-rq').innerHTML=`
+    <div class="kpi c-blue"><div class="kpi-ico">📝</div><div class="kpi-lbl">RQ Realizados</div><div class="kpi-val">${realizados}</div><div class="kpi-meta">Total del período</div></div>
+    <div class="kpi c-green"><div class="kpi-ico">✅</div><div class="kpi-lbl">RQ Atendidos</div><div class="kpi-val">${atendidos}</div><div class="kpi-meta">${realizados?Math.round(atendidos/realizados*100):0}% del total</div></div>
+    <div class="kpi c-amber"><div class="kpi-ico">⏳</div><div class="kpi-lbl">RQ Pendientes</div><div class="kpi-val">${pendientes}</div><div class="kpi-meta">Sin atender aún</div></div>
+    <div class="kpi c-purple"><div class="kpi-ico">⏱️</div><div class="kpi-lbl">T. Prom. proceso</div><div class="kpi-val">${tProm}d</div><div class="kpi-meta">Recepción a ingreso</div></div>
+  `;
+}
+
+/* ══════════════════════════════════════════════
+   RQ CHARTS
+══════════════════════════════════════════════ */
+function renderRQCharts() {
+  const rqFil = DB.rq.filter(matchFilter);
+
+  // RQ por mes
+  const mesOrden = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const mesesPresentes = [...new Set(rqFil.map(r=>r.mes).filter(Boolean))]
+    .sort((a,b)=>mesOrden.indexOf(a)-mesOrden.indexOf(b));
+
+  const rqMes = mesesPresentes.map(m=>rqFil.filter(r=>r.mes===m).length);
+  const atMes = mesesPresentes.map(m=>rqFil.filter(r=>r.mes===m&&r.estado==='Atendido').length);
+  // Pendientes acumulados por mes de origen (los que siguen pendientes HOY)
+  const pendAcumMes = mesesPresentes.map(m=>DB.rq.filter(r=>r.mes===m&&r.estado==='Pendiente').length);
+
+  destroyChart('rqmes');
+  CHARTS.rqmes = new Chart(document.getElementById('ch-rq-mes'),{
+    type:'bar',
+    data:{labels:mesesPresentes,datasets:[
+      {label:'Realizados',data:rqMes,backgroundColor:'rgba(79,142,247,0.75)',borderRadius:4},
+      {label:'Atendidos',data:atMes,backgroundColor:'rgba(45,212,160,0.75)',borderRadius:4},
+      {label:'Pendientes',data:pendAcumMes,backgroundColor:'rgba(245,165,42,0.75)',borderRadius:4},
+    ]},
+    options:chartOpts(false)
+  });
+
+  // Por unidad
+  const unis=[...new Set(rqFil.map(r=>r.unidad).filter(Boolean))].sort();
+  const uniData=unis.map(u=>rqFil.filter(r=>r.unidad===u).length);
+  const uniColors=['#4f8ef7','#2dd4a0','#f5a52a','#a78bfa','#f26b6b'];
+  destroyChart('rquni');
+  CHARTS.rquni = new Chart(document.getElementById('ch-rq-uni'),{
+    type:'doughnut',
+    data:{labels:unis,datasets:[{data:uniData,backgroundColor:uniColors,borderWidth:0,hoverOffset:5}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',
+      plugins:{legend:{position:'bottom',labels:{color:'#7b82a0',font:{size:11},boxWidth:10,padding:10}}}}
+  });
+
+  // Pendientes acumulados — barras horizontales
+  const pendMeses = mesesPresentes.filter(m=>pendAcumMes[mesesPresentes.indexOf(m)]>0);
+  const pendVals = pendMeses.map(m=>DB.rq.filter(r=>r.mes===m&&r.estado==='Pendiente').length);
+  destroyChart('rqpend');
+  CHARTS.rqpend = new Chart(document.getElementById('ch-rq-pend'),{
+    type:'bar',
+    data:{labels:pendMeses,datasets:[{
+      data:pendVals,backgroundColor:'rgba(245,165,42,0.8)',borderRadius:4,label:'Pendientes'
+    }]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#7b82a0',font:{size:11}},beginAtZero:true,precision:0},
+        y:{grid:{display:false},ticks:{color:'#7b82a0',font:{size:11}}}
+      }
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════
+   RQ TABLE
+══════════════════════════════════════════════ */
+function renderRQTable() {
+  const q=(document.getElementById('srch-rq').value||'').toLowerCase();
+  let rows=DB.rq.filter(matchFilter);
+  if(q) rows=rows.filter(r=>
+    (r.puesto||'').toLowerCase().includes(q)||
+    (r.unidad||'').toLowerCase().includes(q)||
+    (r.area||'').toLowerCase().includes(q)||
+    (r.candidato||'').toLowerCase().includes(q)
+  );
+  const fmt=d=>d?new Date(d+'T12:00:00').toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'}):'—';
+  document.getElementById('tbody-rq').innerHTML=rows.map(r=>`
+    <tr>
+      <td>${r.mes||'—'}</td><td>${r.unidad||'—'}</td><td>${r.area||'—'}</td>
+      <td>${r.puesto||'—'}</td><td>${r.responsable||'—'}</td>
+      <td><span class="badge ${r.estado==='Atendido'?'aten':'pend'}">${r.estado||'—'}</span></td>
+      <td>${r.candidato||'—'}</td><td>${fmt(r.fechaRecepcion)}</td>
+      <td>${fmt(r.fechaIngreso)}</td>
+      <td>${r.tiempoProceso!=null?r.tiempoProceso+' días':'—'}</td>
+      <td>${r.eficiencia||'—'}</td>
+    </tr>`).join('');
+  document.getElementById('rq-count').textContent=`${rows.length} requerimientos`;
+  document.getElementById('foot-rq').textContent=`Mostrando ${rows.length} RQ`;
+}
+
+/* ══════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════ */
+function chartOpts(horz=false) {
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{grid:{display:false},ticks:{color:'#7b82a0',font:{size:11},maxRotation:30,autoSkip:false}},
+      y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#7b82a0',font:{size:11}},beginAtZero:true,precision:0}
+    }
+  };
+}
+function destroyChart(k){ if(CHARTS[k]){CHARTS[k].destroy();delete CHARTS[k];} }
+function updateStatus() {
+  const n = Object.values(filesLoaded).filter(Boolean).length;
+  const total = Object.keys(filesLoaded).length;
+  const dot = document.getElementById('sdot');
+  const lbl = document.getElementById('slabel');
+  if(n===0){ dot.className='sdot'; lbl.textContent='Datos demo'; }
+  else if(n<total){ dot.className='sdot'; lbl.textContent=`${n}/${total} archivos`; }
+  else { dot.className='sdot ok'; lbl.textContent='Datos reales'; }
+}
+</script>
+</body>
+</html>
