@@ -636,9 +636,9 @@ async function loadFromSharePoint() {
     let d = null;
     if (v instanceof Date) {
       d = v;
-    } else if (typeof v === 'number') {
+    } else if (typeof v === 'number' || (!isNaN(Number(v)) && Number(v) > 40000)) {
       // Número de serie de Excel: días desde 1/1/1900
-      d = new Date((v - 25569) * 86400 * 1000);
+      d = new Date((Number(v) - 25569) * 86400 * 1000);
     } else {
       const s = String(v).trim();
       // Intentar parsear "1/08/2025", "08/2025", "2025-08-01", etc.
@@ -665,7 +665,7 @@ async function loadFromSharePoint() {
     const bajasArr = mov.bajas || mov.salidas || mov.BAJAS || [];
     const ingresosArr = mov.ingresos || mov.INGRESOS || [];
     DB.bajas = bajasArr.map(r => ({
-      nombre: `${r['NOMBRE']||''} ${r['APELLIDO PAT.']||''} ${r['APELLIDO MAT.']||''}`.trim(),
+      nombre: `${r['NOMBRE']||''} ${r['APELLIDO PAT']||''} ${r['APELLIDO MAT']||''}`.trim(),
       dni: String(r['DNI']||''),
       area: r['AREA']||r['ÁREA']||'',
       cargo: r['CARGO']||'',
@@ -675,11 +675,11 @@ async function loadFromSharePoint() {
       fechaCese: fmtDate(r['FECHA TÉRMINO']),
       motivoCese: r['MOTIVO DE CESE']||'',
       diasAntig: Number(r['DIAS_ANTIGÜEDAD']||0),
-      hcProm: Number(r['HC PROMEDIO']||0),
-      mesCese: parseMesCol(r['MES']),
-    })).filter(r => r.nombre.trim());
+      hcProm: isNaN(Number(r['HC PROMEDIO'])) ? 0 : Number(r['HC PROMEDIO']||0),
+      mesCese: { mes: parseInt(r['MES']||0)-1, anio: parseInt(r['AÑO']||0) },
+    })).filter(r => r.nombre.trim() && r.mesCese.anio > 0);
     DB.ingresos = ingresosArr.map(r => ({
-      nombre: `${r['NOMBRE']||''} ${r['APELLIDO PAT.']||''} ${r['APELLIDO MAT.']||''}`.trim(),
+      nombre: `${r['NOMBRE']||''} ${r['APELLIDO PAT']||''} ${r['APELLIDO MAT']||''}`.trim(),
       dni: String(r['DNI']||''),
       area: r['AREA']||r['ÁREA']||'',
       cargo: r['CARGO']||'',
@@ -687,8 +687,8 @@ async function loadFromSharePoint() {
       sede: r['SEDE']||'',
       fechaIngreso: fmtDate(r['FECHA INGRESO']),
       reingreso: r['REINGRESO']||'No',
-      mesIngreso: parseMesCol(r['MES']),
-    })).filter(r => r.nombre.trim());
+      mesIngreso: { mes: parseInt(r['MES']||0)-1, anio: parseInt(r['AÑO']||0) },
+    })).filter(r => r.nombre.trim() && r.mesIngreso.anio > 0);
     const mesFromDate = d => {
       if (!d) return '';
       const m = parseInt((d+'').substring(5,7));
@@ -696,22 +696,29 @@ async function loadFromSharePoint() {
     };
     const rqArr = Array.isArray(sel) ? sel : (sel && sel.rq ? sel.rq : []);
     DB.rq = rqArr.map(r => {
-      const fr = fmtDate(r['Fecha de Recepción']);
-      return {
-        fechaRecepcion: fr,
-        mes: r['Mes'] || mesFromDate(fr),
-        anio: fr ? parseInt(fr.substring(0,4)) : null,
-        unidad: r['Unidad']||'',
-        area: r['Area']||r['Área']||'',
-        puesto: r['Puesto']||'',
-        responsable: r['Responsable - GH']||'',
-        candidato: r['Candidato']||'',
-        estado: r['Estado']||'',
-        fechaIngreso: fmtDate(r['Fecha de Ingreso']),
-        tiempoProceso: r['Tiempo de Proceso  (Recp / Firma)'] ? Number(r['Tiempo de Proceso  (Recp / Firma)']) : null,
-        eficiencia: r['Resultado de Eficiencia']||'',
+      const mesNum = parseInt(r['Mes']||r['MES']||0);
+      const anioNum = parseInt(r['Año']||r['AÑO']||0);
+      const excelToISO = v => {
+        if (!v) return '';
+        const n = Number(v);
+        if (!isNaN(n) && n > 40000) return new Date((n-25569)*86400*1000).toISOString().substring(0,10);
+        return fmtDate(v);
       };
-    }).filter(r => r.fechaRecepcion);
+      return {
+        fechaRecepcion: excelToISO(r['Fecha de Recepción']||r['Fecha de Recepcion']),
+        mes: mesNum > 0 ? MESES_ES[mesNum-1] : '',
+        anio: anioNum,
+        unidad: (r['Unidad']||'').trim(),
+        area: (r['Area']||r['Área']||'').trim(),
+        puesto: (r['Puesto']||'').trim(),
+        responsable: (r['Responsable - GH']||'').trim(),
+        candidato: (r['Candidato']||'').replace(/ /g,'').trim(),
+        estado: (r['Estado']||r['Estado ']||'').trim(),
+        fechaIngreso: excelToISO(r['Fecha de Ingreso']),
+        tiempoProceso: r['Tiempo de Proceso  (Recp / Firma)'] ? Number(r['Tiempo de Proceso  (Recp / Firma)']) : null,
+        eficiencia: (r['Resultado de Eficiencia']||'').trim(),
+      };
+    }).filter(r => r.anio > 0);
 
     dot.className = 'sdot ok';
     lbl.textContent = 'GitHub · Actualizado';
@@ -875,9 +882,9 @@ function parseMovPersonal(wb) {
     let d = null;
     if (v instanceof Date) {
       d = v;
-    } else if (typeof v === 'number') {
+    } else if (typeof v === 'number' || (!isNaN(Number(v)) && Number(v) > 40000)) {
       // Número de serie de Excel: días desde 1/1/1900
-      d = new Date((v - 25569) * 86400 * 1000);
+      d = new Date((Number(v) - 25569) * 86400 * 1000);
     } else {
       const s = String(v).trim();
       // Intentar parsear "1/08/2025", "08/2025", "2025-08-01", etc.
@@ -899,6 +906,11 @@ function parseMovPersonal(wb) {
   const fmtDate = v => {
     if (!v) return '';
     if (v instanceof Date) return v.toISOString().substring(0,10);
+    const n = Number(v);
+    if (!isNaN(n) && n > 40000) {
+      // Número de serie Excel → fecha ISO
+      return new Date((n - 25569) * 86400 * 1000).toISOString().substring(0,10);
+    }
     return String(v).substring(0,10);
   };
   DB.bajas = bajas.map(r => ({
@@ -939,9 +951,9 @@ function parseSeleccion(wb) {
     let d = null;
     if (v instanceof Date) {
       d = v;
-    } else if (typeof v === 'number') {
+    } else if (typeof v === 'number' || (!isNaN(Number(v)) && Number(v) > 40000)) {
       // Número de serie de Excel: días desde 1/1/1900
-      d = new Date((v - 25569) * 86400 * 1000);
+      d = new Date((Number(v) - 25569) * 86400 * 1000);
     } else {
       const s = String(v).trim();
       // Intentar parsear "1/08/2025", "08/2025", "2025-08-01", etc.
@@ -963,6 +975,11 @@ function parseSeleccion(wb) {
   const fmtDate = v => {
     if (!v) return '';
     if (v instanceof Date) return v.toISOString().substring(0,10);
+    const n = Number(v);
+    if (!isNaN(n) && n > 40000) {
+      // Número de serie Excel → fecha ISO
+      return new Date((n - 25569) * 86400 * 1000).toISOString().substring(0,10);
+    }
     return String(v).substring(0,10);
   };
   const mesFromDate = d => {
@@ -999,14 +1016,8 @@ function buildFilterOptions() {
   // Solo años donde hay ceses O ingresos reales del período
   // NO incluir años de contratación histórica de cesados
   const anioSet = new Set();
-  DB.bajas.forEach(r => {
-    if (r.mesCese)        anioSet.add(String(r.mesCese.anio));
-    else if (r.fechaCese) anioSet.add(r.fechaCese.substring(0,4));
-  });
-  DB.ingresos.forEach(r => {
-    if (r.mesIngreso)        anioSet.add(String(r.mesIngreso.anio));
-    else if (r.fechaIngreso) anioSet.add(r.fechaIngreso.substring(0,4));
-  });
+  DB.bajas.forEach(r => { if (r.mesCese?.anio) anioSet.add(String(r.mesCese.anio)); });
+  DB.ingresos.forEach(r => { if (r.mesIngreso?.anio) anioSet.add(String(r.mesIngreso.anio)); });
   const anios = [...anioSet].filter(a => a && a.length === 4).sort().reverse();
   const unis = [...new Set([...all.map(r=>r.unidad), ...DB.rq.map(r=>r.unidad)].filter(Boolean))].sort();
 
@@ -1047,41 +1058,26 @@ function resetFilters() {
 }
 
 function matchFilter(r) {
-  // Para ingresos usa mesIngreso del Excel si está disponible
   const mi = r.mesIngreso;
-  const fecha = r.fechaIngreso || r.fechaCese || r.fechaRecepcion || '';
-  const anioOk = FIL.anio === 'todos' || (mi ? mi.anio === parseInt(FIL.anio) : fecha.startsWith(FIL.anio));
-  const mesOk = FIL.mes === 'todos' || (mi ? MESES_ES[mi.mes] === FIL.mes : (()=>{
-    const m = parseInt(fecha.substring(5,7));
-    return !isNaN(m) && MESES_ES[m-1] === FIL.mes;
-  })());
-  const uni = r.unidad || '';
-  const uniOk = FIL.uni === 'todas' || uni === FIL.uni;
+  const anioOk = FIL.anio === 'todos' || (mi && mi.anio === parseInt(FIL.anio));
+  const mesOk = FIL.mes === 'todos' || (mi && MESES_ES[mi.mes] === FIL.mes);
+  const uniOk = FIL.uni === 'todas' || (r.unidad||'').trim() === FIL.uni.trim();
   return anioOk && mesOk && uniOk;
 }
 // Para bajas: filtrar por fechaCESE (no fechaIngreso) para que el año/mes
 // corresponda al momento en que la persona cesó, no cuando ingresó.
 function matchFilterBaja(r) {
-  // Usa columna MES del Excel si está disponible
   const mc = r.mesCese;
-  const anioOk = FIL.anio === 'todos' || (mc ? mc.anio === parseInt(FIL.anio) : (r.fechaCese||'').startsWith(FIL.anio));
-  const mesOk = FIL.mes === 'todos' || (mc ? MESES_ES[mc.mes] === FIL.mes : (()=>{
-    const m = parseInt((r.fechaCese||'').substring(5,7));
-    return !isNaN(m) && MESES_ES[m-1] === FIL.mes;
-  })());
-  const uniOk = FIL.uni === 'todas' || (r.unidad||'') === FIL.uni;
+  const anioOk = FIL.anio === 'todos' || (mc && mc.anio === parseInt(FIL.anio));
+  const mesOk = FIL.mes === 'todos' || (mc && MESES_ES[mc.mes] === FIL.mes);
+  const uniOk = FIL.uni === 'todas' || (r.unidad||'').trim() === FIL.uni.trim();
   return anioOk && mesOk && uniOk;
 }
 function matchFilterRQ(r) {
-  // Same as matchFilter but uses fechaRecepcion as primary date and adds resp filter
-  const fecha = r.fechaRecepcion || '';
-  const anioOk = FIL.anio === 'todos' || fecha.startsWith(FIL.anio);
-  const mesOk = FIL.mes === 'todos' || (()=>{
-    const m = parseInt(fecha.substring(5,7));
-    return !isNaN(m) && MESES_ES[m-1] === FIL.mes;
-  })();
-  const uniOk = FIL.uni === 'todas' || (r.unidad||'') === FIL.uni;
-  const respOk = FIL.resp === 'todos' || (r.responsable||'') === FIL.resp;
+  const anioOk = FIL.anio === 'todos' || r.anio === parseInt(FIL.anio);
+  const mesOk = FIL.mes === 'todos' || r.mes === FIL.mes;
+  const uniOk = FIL.uni === 'todas' || (r.unidad||'').trim() === FIL.uni.trim();
+  const respOk = FIL.resp === 'todos' || (r.responsable||'').trim() === FIL.resp.trim();
   return anioOk && mesOk && uniOk && respOk;
 }
 
@@ -1184,11 +1180,11 @@ function renderMovCharts() {
   const ingMes = Array(12).fill(0);
   const cesMes = Array(12).fill(0);
   ingFil.forEach(r=>{
-    const idx = r.mesIngreso ? r.mesIngreso.mes : parseInt((r.fechaIngreso||'').substring(5,7)) - 1;
+    const idx = r.mesIngreso?.mes;
     if (idx >= 0 && idx < 12) ingMes[idx]++;
   });
   bajasFil.forEach(r=>{
-    const idx = r.mesCese ? r.mesCese.mes : parseInt((r.fechaCese||'').substring(5,7)) - 1;
+    const idx = r.mesCese?.mes;
     if (idx >= 0 && idx < 12) cesMes[idx]++;
   });
 
@@ -1216,20 +1212,12 @@ function renderMovCharts() {
   const anioAnterior = anioActual - 1;
   const cesActual = Array(12).fill(0);
   const cesAnterior = Array(12).fill(0);
-  DB.bajas.filter(r => FIL.uni === 'todas' || r.unidad === FIL.uni).forEach(r => {
-    let a, m;
-    if (r.mesCese) {
-      a = r.mesCese.anio;
-      m = r.mesCese.mes + 1; // convertir a 1-12
-    } else {
-      const fecha = r.fechaCese || '';
-      if (!fecha) return;
-      a = parseInt(fecha.substring(0,4));
-      m = parseInt(fecha.substring(5,7));
-    }
-    if (!m) return;
-    if (a === anioActual) cesActual[m-1]++;
-    if (a === anioAnterior) cesAnterior[m-1]++;
+  DB.bajas.filter(r => FIL.uni === 'todas' || (r.unidad||'').trim() === FIL.uni.trim()).forEach(r => {
+    if (!r.mesCese) return;
+    const a = r.mesCese.anio;
+    const m = r.mesCese.mes; // ya es 0-11
+    if (a === anioActual) cesActual[m]++;
+    if (a === anioAnterior) cesAnterior[m]++;
   });
   const legYoY = document.getElementById('leg-yoy');
   if(legYoY) legYoY.innerHTML = `
