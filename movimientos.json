@@ -1,0 +1,1 @@
+json(concat('{"bajas":', string(body('Obtener_filas_BAJAS')?['value']), ',"ingresos":', string(body('Obtener_filas_INGRESOS')?['value']), '}'))
