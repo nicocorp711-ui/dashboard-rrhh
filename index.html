@@ -473,10 +473,17 @@ function renderModalAltas(){
   const {mes,anio} = getLatest();
   const uni = document.getElementById('sf-uni')?.value||'todas';
   const q = (document.getElementById('m-srch-a')?.value||'').toLowerCase();
-  let rows = DB.a2.filter(r=>parseInt(r['MES'])===mes&&parseInt(r['AÑO'])===anio&&(uni==='todas'||r['Unidad']===uni));
+  let rows = DB.a2.filter(r=>{
+    const rMes = parseInt(r['MES']||r['Mes']||0);
+    const rAnio = parseInt(r['AÑO']||r['Año']||0);
+    const rUni = r['Unidad']||r['UNIDAD']||'';
+    return rMes===mes && rAnio===anio && (uni==='todas'||rUni===uni);
+  });
   if(q) rows=rows.filter(r=>(r['Nombre Completo']||'').toLowerCase().includes(q)||(r['CARGO']||'').toLowerCase().includes(q));
   const tb = document.getElementById('m-tb-a');
-  if(tb) tb.innerHTML=rows.map(r=>`<tr><td>${r['DNI']||'—'}</td><td>${r['Nombre Completo']||'—'}</td><td>${r['CARGO']||'—'}</td><td>${r['Unidad']||'—'}</td><td>${fmtDate(r['FECHA INGRESO'])}</td></tr>`).join('');
+  if(tb) tb.innerHTML=rows.length
+    ? rows.map(r=>`<tr><td>${r['DNI']||'—'}</td><td>${r['Nombre Completo']||'—'}</td><td>${r['CARGO']||'—'}</td><td>${r['Unidad']||r['UNIDAD']||'—'}</td><td>${fmtDate(r['FECHA INGRESO'])}</td></tr>`).join('')
+    : '<tr><td colspan="5" style="text-align:center;color:var(--tx3);padding:20px">Sin registros para este período</td></tr>';
   document.getElementById('modal-foot').textContent=`${rows.length} ingresos`;
 }
 
@@ -484,10 +491,17 @@ function renderModalBajas(){
   const {mes,anio} = getLatest();
   const uni = document.getElementById('sf-uni')?.value||'todas';
   const q = (document.getElementById('m-srch-b')?.value||'').toLowerCase();
-  let rows = DB.b2.filter(r=>parseInt(r['MES'])===mes&&parseInt(r['AÑO'])===anio&&(uni==='todas'||r['UNIDAD']===uni));
+  let rows = DB.b2.filter(r=>{
+    const rMes = parseInt(r['MES']||r['Mes']||0);
+    const rAnio = parseInt(r['AÑO']||r['Año']||0);
+    const rUni = r['UNIDAD']||r['Unidad']||'';
+    return rMes===mes && rAnio===anio && (uni==='todas'||rUni===uni);
+  });
   if(q) rows=rows.filter(r=>(r['NOMBRE COMPLETO']||'').toLowerCase().includes(q)||(r['CARGO']||'').toLowerCase().includes(q));
   const tb = document.getElementById('m-tb-b');
-  if(tb) tb.innerHTML=rows.map(r=>`<tr><td>${r['NOMBRE COMPLETO']||'—'}</td><td>${r['CARGO']||'—'}</td><td>${r['UNIDAD']||'—'}</td><td>${r['RANGO DE EDAD']||'—'}</td><td>${fmtDate(r['FECHA TÉRMINO'])}</td><td>${r['ANTIGÜEDAD']||'—'}</td><td>${r['MOTIVO DE CESE']||'—'}</td></tr>`).join('');
+  if(tb) tb.innerHTML=rows.length
+    ? rows.map(r=>`<tr><td>${r['NOMBRE COMPLETO']||'—'}</td><td>${r['CARGO']||'—'}</td><td>${r['UNIDAD']||r['Unidad']||'—'}</td><td>${r['RANGO DE EDAD']||'—'}</td><td>${fmtDate(r['FECHA TÉRMINO'])}</td><td>${r['ANTIGÜEDAD']||'—'}</td><td>${r['MOTIVO DE CESE']||'—'}</td></tr>`).join('')
+    : '<tr><td colspan="7" style="text-align:center;color:var(--tx3);padding:20px">Sin registros para este período</td></tr>';
 }
 
 function openModalRQ(){
@@ -557,7 +571,8 @@ async function loadData(){
   document.getElementById('slbl').textContent='Cargando...';
   if(CFG.USE_JSON && CFG.JSON_MOV && CFG.JSON_SEL){
     try {
-      const [rM,rS] = await Promise.all([fetch(CFG.JSON_MOV),fetch(CFG.JSON_SEL)]);
+      const ts = Date.now();
+    const [rM,rS] = await Promise.all([fetch(CFG.JSON_MOV+'?v='+ts),fetch(CFG.JSON_SEL+'?v='+ts)]);
       const mov=await rM.json(), sel=await rS.json();
       DB.is  = mov.ingresos_salidas||[];
       DB.st  = mov.salidas_tiempo||[];
@@ -644,7 +659,6 @@ function renderStatus(){
     <div class="kpi kr"><div class="klbl">Ceses</div><div class="kval">${bajas}</div><div class="kmeta">${MES[mes-1]} ${anio}</div></div>
     <div class="kpi ka"><div class="klbl">Rotación</div><div class="kval">${rot}%</div><div class="kmeta">Ceses / HC prom.</div></div>
     <div class="kpi kt"><div class="klbl">Deserción</div><div class="kval">${des}%</div><div class="kmeta">Ceses / Ingresos</div></div>
-    <div class="kpi kp"><div class="klbl">RQ Pendientes</div><div class="kval">${rqPend}</div><div class="kmeta">Acumulados</div></div>
   `;
 
   const rqF=DB.trq.filter(r=>parseInt(r['Mes'])===mes&&parseInt(r['Año'])===anio&&(uni==='todas'||r['Unidad']===uni));
@@ -653,8 +667,11 @@ function renderStatus(){
   const pend = rqF.reduce((s,r)=>s+n(r['Pendiente']),0);
   const enP  = rqF.reduce((s,r)=>s+n(r['En plazo']),0);
   const fP   = rqF.reduce((s,r)=>s+n(r['Fuera de plazo']),0);
-  const dpA  = rqF.length?Math.round(rqF.reduce((s,r)=>s+n(r['Dias Promedio Atendidos']),0)/Math.max(rqF.filter(r=>n(r['Atendido'])>0).length,1)):0;
-  const dpP  = rqF.length?Math.round(rqF.reduce((s,r)=>s+n(r['Dias Promedio Pendientes']),0)/Math.max(rqF.filter(r=>n(r['Pendiente'])>0).length,1)):0;
+  // Días promedio: SUM(Dias) / SUM(Atendidos o Pendientes)
+  const sumDpA = rqF.reduce((s,r)=>s+n(r['Dias Promedio Atendidos']),0);
+  const sumDpP = rqF.reduce((s,r)=>s+n(r['Dias Promedio Pendientes']),0);
+  const dpA = aten > 0 ? Math.round(sumDpA / aten) : 0;
+  const dpP = pend > 0 ? Math.round(sumDpP / pend) : 0;
 
   document.getElementById('kpi-rq-s').innerHTML=`
     <div class="kpi kb"><div class="klbl">Solicitados</div><div class="kval">${sol}</div><div class="kmeta">Este mes</div></div>
@@ -682,11 +699,14 @@ function renderHistorial(){
   const tA=isF.reduce((s,r)=>s+n(r['ALTAS']),0);
   const tB=isF.reduce((s,r)=>s+n(r['BAJAS']),0);
   const hcAvg=isF.length?Math.round(isF.reduce((s,r)=>s+n(r['HC promedio']),0)/isF.length):0;
+  // Meses con data real (ALTAS o BAJAS > 0) para calcular rotación correctamente
+  const mesesConData = [...new Set(isF.filter(r=>n(r['ALTAS'])>0||n(r['BAJAS'])>0).map(r=>r['Mes']))].length;
+  const mesesDiv = mesesConData > 0 ? mesesConData : 1;
+  const rotAnual = hcAvg>0 ? ((tB/hcAvg/mesesDiv)*100).toFixed(1) : '0.0';
   document.getElementById('kpi-mov-h').innerHTML=`
-    <div class="kpi kb"><div class="klbl">HC promedio</div><div class="kval">${hcAvg}</div><div class="kmeta">Promedio del año</div></div>
     <div class="kpi kg"><div class="klbl">Total ingresos</div><div class="kval">${tA}</div><div class="kmeta">Año ${anio}</div></div>
     <div class="kpi kr"><div class="klbl">Total ceses</div><div class="kval">${tB}</div><div class="kmeta">Año ${anio}</div></div>
-    <div class="kpi ka"><div class="klbl">Rotación anual</div><div class="kval">${hcAvg>0?((tB/hcAvg/12)*100).toFixed(1):'0.0'}%</div><div class="kmeta">Prom. mensual</div></div>
+    <div class="kpi ka"><div class="klbl">Rotación</div><div class="kval">${rotAnual}%</div><div class="kmeta">Prom. ${mesesDiv} ${mesesDiv===1?'mes':'meses'}</div></div>
     <div class="kpi kt"><div class="klbl">Deserción anual</div><div class="kval">${tA>0?((tB/tA)*100).toFixed(1):'0.0'}%</div><div class="kmeta">Ceses / Ingresos</div></div>
   `;
 
