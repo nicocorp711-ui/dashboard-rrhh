@@ -312,7 +312,12 @@ tbody td{padding:8px 12px;color:var(--tx);white-space:nowrap}
         <div class="tcard" style="margin-bottom:0">
           <div class="thead">
             <div><div class="ttitle">Ingresos del año</div><div class="tsub" id="altas-h-sub"></div></div>
-            <input class="srch" id="srch-ah" placeholder="🔍 Buscar..." oninput="renderAltasH()">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <select class="fsel" id="mf-ah" onchange="renderAltasH()" style="font-size:11px;padding:5px 8px">
+                <option value="todos">Todos los meses</option>
+              </select>
+              <input class="srch" id="srch-ah" placeholder="🔍 Buscar..." oninput="renderAltasH()">
+            </div>
           </div>
           <div class="twrap"><table>
             <thead><tr><th>Mes</th><th>Nombre</th><th>Cargo</th><th>Unidad</th><th>F. Ingreso</th></tr></thead>
@@ -323,7 +328,12 @@ tbody td{padding:8px 12px;color:var(--tx);white-space:nowrap}
         <div class="tcard" style="margin-bottom:0">
           <div class="thead">
             <div><div class="ttitle">Ceses del año</div><div class="tsub" id="bajas-h-sub"></div></div>
-            <input class="srch" id="srch-bh" placeholder="🔍 Buscar..." oninput="renderBajasH()">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <select class="fsel" id="mf-bh" onchange="renderBajasH()" style="font-size:11px;padding:5px 8px">
+                <option value="todos">Todos los meses</option>
+              </select>
+              <input class="srch" id="srch-bh" placeholder="🔍 Buscar..." oninput="renderBajasH()">
+            </div>
           </div>
           <div class="twrap"><table>
             <thead><tr><th>Mes</th><th>Nombre</th><th>Cargo</th><th>Unidad</th><th>Motivo</th><th>Antigüedad</th></tr></thead>
@@ -369,7 +379,12 @@ tbody td{padding:8px 12px;color:var(--tx);white-space:nowrap}
       <div class="tcard">
         <div class="thead">
           <div><div class="ttitle">Detalle de requerimientos</div><div class="tsub" id="rq-h-sub"></div></div>
-          <input class="srch" id="srch-rh" placeholder="🔍 Buscar..." oninput="renderRQH()">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <select class="fsel" id="mf-rh" onchange="renderRQH()" style="font-size:11px;padding:5px 8px">
+              <option value="todos">Todos los meses</option>
+            </select>
+            <input class="srch" id="srch-rh" placeholder="🔍 Buscar..." oninput="renderRQH()">
+          </div>
         </div>
         <div class="twrap"><table>
           <thead><tr><th>Mes</th><th>Unidad</th><th>Puesto</th><th>Responsable</th><th>Estado</th><th>Días</th><th>Eficiencia</th></tr></thead>
@@ -619,6 +634,14 @@ function buildOpts(){
 
   const hfr=document.getElementById('hf-resp');
   hfr.innerHTML='<option value="todos">Todos</option>'+resps.map(r=>`<option value="${r}">${r}</option>`).join('');
+
+  // Populate month filters for lists
+  const mesOpts = '<option value="todos">Todos los meses</option>' +
+    MES.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
+  ['mf-ah','mf-bh','mf-rh'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.innerHTML=mesOpts;
+  });
 }
 
 function resetHist(){
@@ -700,13 +723,12 @@ function renderHistorial(){
   const tB=isF.reduce((s,r)=>s+n(r['BAJAS']),0);
   const hcAvg=isF.length?Math.round(isF.reduce((s,r)=>s+n(r['HC promedio']),0)/isF.length):0;
   // Meses con data real (ALTAS o BAJAS > 0) para calcular rotación correctamente
-  const mesesConData = [...new Set(isF.filter(r=>n(r['ALTAS'])>0||n(r['BAJAS'])>0).map(r=>r['Mes']))].length;
-  const mesesDiv = mesesConData > 0 ? mesesConData : 1;
-  const rotAnual = hcAvg>0 ? ((tB/hcAvg/mesesDiv)*100).toFixed(1) : '0.0';
+  const sumHcProm = isF.reduce((s,r)=>s+n(r['HC promedio']),0);
+  const rotAnual = sumHcProm>0 ? ((tB/sumHcProm)*100).toFixed(1) : '0.0';
   document.getElementById('kpi-mov-h').innerHTML=`
     <div class="kpi kg"><div class="klbl">Total ingresos</div><div class="kval">${tA}</div><div class="kmeta">Año ${anio}</div></div>
     <div class="kpi kr"><div class="klbl">Total ceses</div><div class="kval">${tB}</div><div class="kmeta">Año ${anio}</div></div>
-    <div class="kpi ka"><div class="klbl">Rotación</div><div class="kval">${rotAnual}%</div><div class="kmeta">Prom. ${mesesDiv} ${mesesDiv===1?'mes':'meses'}</div></div>
+    <div class="kpi ka"><div class="klbl">Rotación</div><div class="kval">${rotAnual}%</div><div class="kmeta">Ceses / HC promedio</div></div>
     <div class="kpi kt"><div class="klbl">Deserción anual</div><div class="kval">${tA>0?((tB/tA)*100).toFixed(1):'0.0'}%</div><div class="kmeta">Ceses / Ingresos</div></div>
   `;
 
@@ -788,8 +810,13 @@ function renderHistCharts(isF,stF,smF,trqF,anio){
 function renderAltasH(){
   const anio=parseInt(document.getElementById('hf-anio')?.value||'2026');
   const uni=document.getElementById('hf-uni')?.value||'todas';
+  const mf=document.getElementById('mf-ah')?.value||'todos';
   const q=(document.getElementById('srch-ah')?.value||'').toLowerCase();
-  let rows=DB.a2.filter(r=>parseInt(r['AÑO'])===anio&&(uni==='todas'||r['Unidad']===uni));
+  let rows=DB.a2.filter(r=>
+    parseInt(r['AÑO'])===anio &&
+    (uni==='todas'||r['Unidad']===uni) &&
+    (mf==='todos'||parseInt(r['MES'])===parseInt(mf))
+  );
   if(q) rows=rows.filter(r=>(r['Nombre Completo']||'').toLowerCase().includes(q)||(r['CARGO']||'').toLowerCase().includes(q));
   document.getElementById('tb-ah').innerHTML=rows.map(r=>`<tr><td>${mesNom(r['MES'])}</td><td>${r['Nombre Completo']||'—'}</td><td>${r['CARGO']||'—'}</td><td>${r['Unidad']||'—'}</td><td>${fmtDate(r['FECHA INGRESO'])}</td></tr>`).join('');
   document.getElementById('altas-h-sub').textContent=`${rows.length} ingresos en ${anio}`;
@@ -799,8 +826,13 @@ function renderAltasH(){
 function renderBajasH(){
   const anio=parseInt(document.getElementById('hf-anio')?.value||'2026');
   const uni=document.getElementById('hf-uni')?.value||'todas';
+  const mf=document.getElementById('mf-bh')?.value||'todos';
   const q=(document.getElementById('srch-bh')?.value||'').toLowerCase();
-  let rows=DB.b2.filter(r=>parseInt(r['AÑO'])===anio&&(uni==='todas'||r['UNIDAD']===uni));
+  let rows=DB.b2.filter(r=>
+    parseInt(r['AÑO'])===anio &&
+    (uni==='todas'||r['UNIDAD']===uni) &&
+    (mf==='todos'||parseInt(r['MES'])===parseInt(mf))
+  );
   if(q) rows=rows.filter(r=>(r['NOMBRE COMPLETO']||'').toLowerCase().includes(q)||(r['CARGO']||'').toLowerCase().includes(q));
   document.getElementById('tb-bh').innerHTML=rows.map(r=>`<tr><td>${mesNom(r['MES'])}</td><td>${r['NOMBRE COMPLETO']||'—'}</td><td>${r['CARGO']||'—'}</td><td>${r['UNIDAD']||'—'}</td><td>${r['MOTIVO DE CESE']||'—'}</td><td>${r['ANTIGÜEDAD']||'—'}</td></tr>`).join('');
   document.getElementById('bajas-h-sub').textContent=`${rows.length} ceses en ${anio}`;
@@ -811,8 +843,14 @@ function renderRQH(){
   const anio=parseInt(document.getElementById('hf-anio')?.value||'2026');
   const uni=document.getElementById('hf-uni')?.value||'todas';
   const resp=document.getElementById('hf-resp')?.value||'todos';
+  const mf=document.getElementById('mf-rh')?.value||'todos';
   const q=(document.getElementById('srch-rh')?.value||'').toLowerCase();
-  let rows=DB.rq2.filter(r=>parseInt(r['Año'])===anio&&(uni==='todas'||r['Unidad']===uni)&&(resp==='todos'||r['Responsable - GH']===resp));
+  let rows=DB.rq2.filter(r=>
+    parseInt(r['Año'])===anio &&
+    (uni==='todas'||r['Unidad']===uni) &&
+    (resp==='todos'||r['Responsable - GH']===resp) &&
+    (mf==='todos'||parseInt(r['Mes'])===parseInt(mf))
+  );
   if(q) rows=rows.filter(r=>(r['Puesto']||'').toLowerCase().includes(q)||(r['Unidad']||'').toLowerCase().includes(q));
   const stB=s=>s==='Atendido'?`<span class="badge bg">${s}</span>`:`<span class="badge ba">${s}</span>`;
   document.getElementById('tb-rh').innerHTML=rows.map(r=>`<tr><td>${mesNom(r['Mes'])}</td><td>${r['Unidad']||'—'}</td><td>${r['Puesto']||'—'}</td><td>${r['Responsable - GH']||'—'}</td><td>${stB(r['Estado']||'')}</td><td>${r['Tiempo de Proceso  (Recp / Firma)']||'—'}</td><td>${efBadge(r['Resultado de Eficiencia'])}</td></tr>`).join('');
