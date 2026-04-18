@@ -1,0 +1,37 @@
+name: Sync JSON from Google Drive
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Descargar movimientos.json desde Google Drive
+        run: |
+          curl -L "https://drive.google.com/uc?export=download&id=1PAYOAuJal2f9w_URakWqMr0k-Fp_y29V" -o movimientos.json
+          echo "movimientos.json descargado"
+
+      - name: Descargar seleccion.json desde Google Drive
+        run: |
+          curl -L "https://drive.google.com/uc?export=download&id=1Sq5maYBv4YtpYowTJcNMkPGc8OaKFahJ" -o seleccion.json
+          echo "seleccion.json descargado"
+
+      - name: Verificar JSON valido
+        run: |
+          python3 -c "import json; json.load(open('movimientos.json')); print('movimientos.json OK')"
+          python3 -c "import json; json.load(open('seleccion.json')); print('seleccion.json OK')"
+
+      - name: Commit y push si hay cambios
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add movimientos.json seleccion.json
+          git diff --staged --quiet || git commit -m "Sync JSON desde Google Drive - $(date '+%d/%m/%Y %H:%M')"
+          git push
