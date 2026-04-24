@@ -633,7 +633,13 @@ async function loadData(){
 
 // FILTER OPTIONS
 function buildOpts(){
-  const anios = [...new Set(DB.is.map(r=>r['Año']).filter(Boolean))].sort().reverse();
+  // Años desde todas las fuentes
+  const anioSet = new Set([
+    ...DB.is.map(r=>r['Año']),
+    ...DB.a2.map(r=>r['AÑO']||r['Año']),
+    ...DB.b2.map(r=>r['AÑO']||r['Año']),
+  ].filter(Boolean));
+  const anios = [...anioSet].sort().reverse();
   const unis  = [...new Set(DB.is.map(r=>r['Unidad']).filter(Boolean))].sort();
   const resps = [...new Set(DB.trq.map(r=>r['Responsable - GH']).filter(Boolean))].sort();
 
@@ -642,6 +648,13 @@ function buildOpts(){
 
   const hfa=document.getElementById('hf-anio');
   hfa.innerHTML=anios.map(a=>`<option value="${a}">${a}</option>`).join('');
+  
+  // Default al año más reciente con data en altas_2 o bajas_2
+  const aniosMov = [...new Set([
+    ...DB.a2.map(r=>r['AÑO']||r['Año']),
+    ...DB.b2.map(r=>r['AÑO']||r['Año']),
+  ].filter(Boolean))].sort().reverse();
+  if(aniosMov.length && hfa) hfa.value = aniosMov[0];
 
   const hfu=document.getElementById('hf-uni');
   hfu.innerHTML='<option value="todas">Todas</option>'+unis.map(u=>`<option value="${u}">${u}</option>`).join('');
@@ -840,13 +853,13 @@ function renderAltasH(){
   const mf=document.getElementById('mf-ah')?.value||'todos';
   const q=(document.getElementById('srch-ah')?.value||'').toLowerCase();
   let rows=DB.a2.filter(r=>
-    parseInt(r['AÑO'])===anio &&
-    (uni==='todas'||r['Unidad']===uni) &&
-    (mf==='todos'||parseInt(r['MES'])===parseInt(mf))
+    parseInt(r['AÑO']||r['Año'])===anio &&
+    (uni==='todas'||(r['Unidad']||r['UNIDAD'])===uni) &&
+    (mf==='todos'||parseInt(r['MES']||r['Mes'])===parseInt(mf))
   );
   if(q) rows=rows.filter(r=>(r['Nombre Completo']||'').toLowerCase().includes(q)||(r['CARGO']||'').toLowerCase().includes(q));
   document.getElementById('tb-ah').innerHTML=rows.map(r=>`<tr><td>${mesNom(r['MES'])}</td><td>${r['Nombre Completo']||'—'}</td><td>${r['CARGO']||'—'}</td><td>${r['Unidad']||'—'}</td><td>${fmtDate(r['FECHA INGRESO'])}</td></tr>`).join('');
-  document.getElementById('altas-h-sub').textContent=`${rows.length} ingresos en ${anio}`;
+  document.getElementById('altas-h-sub').textContent=`${rows.length} ingresos — ${anio}${mf!=='todos'?' · '+MES[parseInt(mf)-1]:''}${uni!=='todas'?' · '+uni:''}`;
   document.getElementById('ft-ah').textContent=`${rows.length} registros`;
 }
 
@@ -856,13 +869,13 @@ function renderBajasH(){
   const mf=document.getElementById('mf-bh')?.value||'todos';
   const q=(document.getElementById('srch-bh')?.value||'').toLowerCase();
   let rows=DB.b2.filter(r=>
-    parseInt(r['AÑO'])===anio &&
-    (uni==='todas'||r['UNIDAD']===uni) &&
-    (mf==='todos'||parseInt(r['MES'])===parseInt(mf))
+    parseInt(r['AÑO']||r['Año'])===anio &&
+    (uni==='todas'||(r['UNIDAD']||r['Unidad'])===uni) &&
+    (mf==='todos'||parseInt(r['MES']||r['Mes'])===parseInt(mf))
   );
   if(q) rows=rows.filter(r=>(r['NOMBRE COMPLETO']||'').toLowerCase().includes(q)||(r['CARGO']||'').toLowerCase().includes(q));
   document.getElementById('tb-bh').innerHTML=rows.map(r=>`<tr><td>${mesNom(r['MES'])}</td><td>${r['NOMBRE COMPLETO']||'—'}</td><td>${r['CARGO']||'—'}</td><td>${r['UNIDAD']||'—'}</td><td>${r['MOTIVO DE CESE']||'—'}</td><td>${r['ANTIGÜEDAD']||'—'}</td></tr>`).join('');
-  document.getElementById('bajas-h-sub').textContent=`${rows.length} ceses en ${anio}`;
+  document.getElementById('bajas-h-sub').textContent=`${rows.length} ceses — ${anio}${mf!=='todos'?' · '+MES[parseInt(mf)-1]:''}${uni!=='todas'?' · '+uni:''}`;
   document.getElementById('ft-bh').textContent=`${rows.length} registros`;
 }
 
