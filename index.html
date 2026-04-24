@@ -362,7 +362,7 @@ tbody td{padding:8px 12px;color:var(--tx);white-space:nowrap}
           <div style="position:relative;height:190px"><canvas id="ch-rqm" role="img" aria-label="RQ por mes"></canvas></div>
         </div>
         <div class="card">
-          <div class="ct">En plazo vs Fuera de plazo</div><div class="cs">Cumplimiento del ciclo (≤ 16 días)</div>
+          <div class="ct">En plazo vs Fuera de plazo</div><div class="cs">Cumplimiento del ciclo (< 20 días)</div>
           <div class="leg">
             <div class="li"><div class="ld" style="background:var(--grn)"></div>En plazo</div>
             <div class="li"><div class="ld" style="background:var(--red)"></div>Fuera de plazo</div>
@@ -417,7 +417,18 @@ let CH = {};
 
 function n(v){ return isNaN(Number(v))?0:Number(v); }
 function dc(k){ if(CH[k]){CH[k].destroy();delete CH[k];} }
-function fmtDate(v){ if(!v)return '—'; const s=String(v); if(s.includes('/'))return s; if(s.includes('-'))return s.split('-').reverse().join('/'); return s; }
+function fmtDate(v){
+  if(!v) return '—';
+  const num = Number(v);
+  if(!isNaN(num) && num > 40000) {
+    const d = new Date((num-25569)*86400*1000);
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  }
+  const s = String(v);
+  if(s.includes('/')) return s;
+  if(s.includes('-')) return s.split('-').reverse().join('/');
+  return s;
+}
 function mesNom(m){ return MES[parseInt(m)-1]||m; }
 
 function cOpts(stacked=false){
@@ -460,7 +471,7 @@ function setView(v){
 
 // MODAL
 function openModalMov(){
-  const {mes,anio} = getLatest();
+  const {mes,anio} = getLatestMov();
   const uni = document.getElementById('sf-uni')?.value||'todas';
   document.getElementById('modal-title').textContent = `Ingresos y Ceses — ${MES[mes-1]} ${anio}`;
   document.getElementById('modal-filters').innerHTML = `
@@ -485,7 +496,7 @@ function openModalMov(){
 }
 
 function renderModalAltas(){
-  const {mes,anio} = getLatest();
+  const {mes,anio} = getLatestMov();
   const uni = document.getElementById('sf-uni')?.value||'todas';
   const q = (document.getElementById('m-srch-a')?.value||'').toLowerCase();
   let rows = DB.a2.filter(r=>{
@@ -503,7 +514,7 @@ function renderModalAltas(){
 }
 
 function renderModalBajas(){
-  const {mes,anio} = getLatest();
+  const {mes,anio} = getLatestMov();
   const uni = document.getElementById('sf-uni')?.value||'todas';
   const q = (document.getElementById('m-srch-b')?.value||'').toLowerCase();
   let rows = DB.b2.filter(r=>{
@@ -522,7 +533,8 @@ function renderModalBajas(){
 function openModalRQ(){
   const {mes,anio} = getLatest();
   const uni = document.getElementById('sf-uni')?.value||'todas';
-  document.getElementById('modal-title').textContent = `RQ Pendientes — ${MES[mes-1]} ${anio}`;
+  const {mes:mRQ,anio:aRQ}=getLatest();
+  document.getElementById('modal-title').textContent = `RQ Pendientes acumulados — hasta ${MES[mRQ-1]} ${aRQ}`;
   document.getElementById('modal-filters').innerHTML = `
     <input class="srch" id="m-srch-rq" placeholder="🔍 Buscar puesto, unidad..." oninput="renderModalRQ()" style="width:220px">
   `;
@@ -547,13 +559,15 @@ function renderModalRQ(){
   );
   if(q) rows=rows.filter(r=>(r['Puesto']||'').toLowerCase().includes(q)||(r['Unidad']||'').toLowerCase().includes(q));
   const tb=document.getElementById('m-tb-rq');
-  if(tb) tb.innerHTML=rows.map(r=>`<tr>
-    <td>${mesNom(r['Mes'])} ${r['Año']}</td><td>${r['Unidad']||'—'}</td><td>${r['Puesto']||'—'}</td>
-    <td>${r['Responsable - GH']||'—'}</td>
-    <td><span class="badge ba">Pendiente</span></td>
-    <td>${r['Tiempo de Proceso  (Recp / Firma)']||'—'}</td>
-    <td>${efBadge(r['Resultado de Eficiencia'])}</td>
-  </tr>`).join('');
+  if(tb) tb.innerHTML = rows.length
+    ? rows.map(r=>`<tr>
+        <td>${mesNom(r['Mes'])} ${r['Año']}</td><td>${r['Unidad']||'—'}</td><td>${r['Puesto']||'—'}</td>
+        <td>${r['Responsable - GH']||'—'}</td>
+        <td><span class="badge ba">Pendiente</span></td>
+        <td>${r['Tiempo de Proceso  (Recp / Firma)']||'—'}</td>
+        <td>${efBadge(r['Resultado de Eficiencia'])}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="7" style="text-align:center;color:var(--tx3);padding:20px">Sin pendientes para este período</td></tr>';
   document.getElementById('modal-foot').textContent=`${rows.length} pendientes`;
 }
 
@@ -661,6 +675,18 @@ function getLatest(){
   return {mes:parseInt(lt['Mes']),anio:parseInt(lt['Año'])};
 }
 
+// Para modales de detalle: usa el mes más reciente en altas_2/bajas_2
+function getLatestMov(){
+  const all=[...DB.a2,...DB.b2];
+  if(!all.length) return getLatest();
+  const lt=all.reduce((a,b)=>{
+    const aV=parseInt(a['AÑO']||a['Año']||0)*12+parseInt(a['MES']||a['Mes']||0);
+    const bV=parseInt(b['AÑO']||b['Año']||0)*12+parseInt(b['MES']||b['Mes']||0);
+    return aV>bV?a:b;
+  });
+  return {mes:parseInt(lt['MES']||lt['Mes']),anio:parseInt(lt['AÑO']||lt['Año'])};
+}
+
 // ══ STATUS ══
 function renderStatus(){
   const {mes,anio}=getLatest();
@@ -700,8 +726,8 @@ function renderStatus(){
     <div class="kpi kb"><div class="klbl">Solicitados</div><div class="kval">${sol}</div><div class="kmeta">Este mes</div></div>
     <div class="kpi kg"><div class="klbl">Atendidos</div><div class="kval">${aten}</div><div class="kmeta">${sol?Math.round(aten/sol*100):0}% del total</div></div>
     <div class="kpi ka"><div class="klbl">Pendientes</div><div class="kval">${pend}</div><div class="kmeta">Sin atender</div></div>
-    <div class="kpi kg"><div class="klbl">En plazo</div><div class="kval">${enP}</div><div class="kmeta">≤ 16 días</div></div>
-    <div class="kpi kr"><div class="klbl">Fuera de plazo</div><div class="kval">${fP}</div><div class="kmeta">> 16 días</div></div>
+    <div class="kpi kg"><div class="klbl">En plazo</div><div class="kval">${enP}</div><div class="kmeta">< 20 días</div></div>
+    <div class="kpi kr"><div class="klbl">Fuera de plazo</div><div class="kval">${fP}</div><div class="kmeta">> 20 días</div></div>
     <div class="kpi kp"><div class="klbl">Días prom. atendidos</div><div class="kval">${dpA}</div><div class="kmeta">Tiempo de gestión</div></div>
     <div class="kpi ka"><div class="klbl">Días prom. pendientes</div><div class="kval">${dpP}</div><div class="kmeta">En espera</div></div>
   `;
@@ -742,8 +768,8 @@ function renderHistorial(){
     <div class="kpi kb"><div class="klbl">Solicitados</div><div class="kval">${tS}</div><div class="kmeta">Año ${anio}</div></div>
     <div class="kpi kg"><div class="klbl">Atendidos</div><div class="kval">${tAt}</div><div class="kmeta">${tS?Math.round(tAt/tS*100):0}%</div></div>
     <div class="kpi ka"><div class="klbl">Pendientes</div><div class="kval">${tP}</div><div class="kmeta">Sin atender</div></div>
-    <div class="kpi kg"><div class="klbl">En plazo</div><div class="kval">${tEP}</div><div class="kmeta">≤ 16 días</div></div>
-    <div class="kpi kr"><div class="klbl">Fuera de plazo</div><div class="kval">${tFP}</div><div class="kmeta">> 16 días</div></div>
+    <div class="kpi kg"><div class="klbl">En plazo</div><div class="kval">${tEP}</div><div class="kmeta">< 20 días</div></div>
+    <div class="kpi kr"><div class="klbl">Fuera de plazo</div><div class="kval">${tFP}</div><div class="kmeta">> 20 días</div></div>
   `;
 
   renderHistCharts(isF,stF,smF,trqF,anio);
@@ -762,7 +788,8 @@ function renderHistCharts(isF,stF,smF,trqF,anio){
   ]},options:cOpts()});
 
   const ca=Array(12).fill(0),cant=Array(12).fill(0);
-  DB.is.forEach(r=>{const a=parseInt(r['Año']),m=parseInt(r['Mes'])-1;if(m<0||m>11)return;if(a===anio)ca[m]+=n(r['BAJAS']);if(a===anio-1)cant[m]+=n(r['BAJAS']);});
+  const uni=document.getElementById('hf-uni')?.value||'todas';
+  DB.is.filter(r=>uni==='todas'||r['Unidad']===uni).forEach(r=>{const a=parseInt(r['Año']),m=parseInt(r['Mes'])-1;if(m<0||m>11)return;if(a===anio)ca[m]+=n(r['BAJAS']);if(a===anio-1)cant[m]+=n(r['BAJAS']);});
   document.getElementById('leg-yoy').innerHTML=`<div class="li"><div class="ld" style="background:var(--red)"></div>${anio}</div><div class="li"><div class="ld" style="background:#555c70"></div>${anio-1}</div>`;
   dc('yoy');CH['yoy']=new Chart(document.getElementById('ch-yoy'),{type:'line',data:{labels:MES,datasets:[
     {label:String(anio),data:ca,borderColor:'#f26b6b',backgroundColor:'rgba(242,107,107,0.08)',fill:true,tension:0.4,pointRadius:3,borderWidth:2},
