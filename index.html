@@ -401,8 +401,9 @@ tbody td{padding:8px 12px;color:var(--tx);white-space:nowrap}
 const CFG = {
   PASSWORD: "rrhh2024",
   USE_JSON: true,
-  JSON_MOV: "https://raw.githubusercontent.com/nicocorp711-ui/dashboard-rrhh/main/movimientos.json",
-  JSON_SEL: "https://raw.githubusercontent.com/nicocorp711-ui/dashboard-rrhh/main/seleccion.json",
+  JSON_MOV:  "https://raw.githubusercontent.com/nicocorp711-ui/dashboard-rrhh/main/movimientos.json",
+  JSON_MOV2: "https://raw.githubusercontent.com/nicocorp711-ui/dashboard-rrhh/main/movimientos_2.json",
+  JSON_SEL:  "https://raw.githubusercontent.com/nicocorp711-ui/dashboard-rrhh/main/seleccion.json",
 };
 
 const MES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -598,16 +599,20 @@ function loadDemoDB(){
 
 async function loadData(){
   document.getElementById('slbl').textContent='Cargando...';
-  if(CFG.USE_JSON && CFG.JSON_MOV && CFG.JSON_SEL){
+  if(CFG.USE_JSON && CFG.JSON_MOV && CFG.JSON_MOV2 && CFG.JSON_SEL){
     try {
       const ts = Date.now();
-    const [rM,rS] = await Promise.all([fetch(CFG.JSON_MOV+'?v='+ts),fetch(CFG.JSON_SEL+'?v='+ts)]);
-      const mov=await rM.json(), sel=await rS.json();
+      const [rM,rM2,rS] = await Promise.all([
+        fetch(CFG.JSON_MOV +'?v='+ts),
+        fetch(CFG.JSON_MOV2+'?v='+ts),
+        fetch(CFG.JSON_SEL +'?v='+ts)
+      ]);
+      const mov=await rM.json(), mov2=await rM2.json(), sel=await rS.json();
       DB.is  = mov.ingresos_salidas||[];
       DB.st  = mov.salidas_tiempo||[];
       DB.sm  = mov.salidas_motivo||[];
-      DB.a2  = mov.altas_2||[];
-      DB.b2  = mov.bajas_2||[];
+      DB.a2  = mov2.altas_2||[];
+      DB.b2  = mov2.bajas_2||[];
       DB.trq = sel.tabla_rq||[];
       DB.rq2 = sel.requerimientos_2||[];
       document.getElementById('sdot').className='sdot ok';
