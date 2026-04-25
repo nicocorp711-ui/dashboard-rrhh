@@ -602,12 +602,16 @@ async function loadData(){
   if(CFG.USE_JSON && CFG.JSON_MOV && CFG.JSON_MOV2 && CFG.JSON_SEL){
     try {
       const ts = Date.now();
-      const [rM,rM2,rS] = await Promise.all([
-        fetch(CFG.JSON_MOV +'?v='+ts),
-        fetch(CFG.JSON_MOV2+'?v='+ts),
-        fetch(CFG.JSON_SEL +'?v='+ts)
+      const fetchJ = async url => {
+        const r = await fetch(url+'?v='+ts);
+        if(!r.ok) throw new Error(`Error ${r.status} en ${url}`);
+        return r.json();
+      };
+      const [mov, mov2, sel] = await Promise.all([
+        fetchJ(CFG.JSON_MOV),
+        fetchJ(CFG.JSON_MOV2),
+        fetchJ(CFG.JSON_SEL),
       ]);
-      const mov=await rM.json(), mov2=await rM2.json(), sel=await rS.json();
       DB.is  = mov.ingresos_salidas||[];
       DB.st  = mov.salidas_tiempo||[];
       DB.sm  = mov.salidas_motivo||[];
@@ -618,18 +622,19 @@ async function loadData(){
       document.getElementById('sdot').className='sdot ok';
       document.getElementById('slbl').textContent='GitHub · Actualizado';
       document.getElementById('hsub').textContent='Actualizado: '+new Date().toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'});
+      console.log('Datos cargados — IS:'+DB.is.length+' A2:'+DB.a2.length+' B2:'+DB.b2.length+' TRQ:'+DB.trq.length+' RQ2:'+DB.rq2.length);
     } catch(e){
-      console.warn('GitHub no disponible, usando datos demo');
-      loadDemoDB();
+      console.error('Error cargando JSON:', e.message);
       document.getElementById('sdot').className='sdot';
-      document.getElementById('slbl').textContent='Datos demo';
-      document.getElementById('hsub').textContent='Sin conexión a GitHub';
+      document.getElementById('slbl').textContent='Error: '+e.message;
+      document.getElementById('hsub').textContent='Usando datos demo — revisar consola';
+      loadDemoDB();
     }
   } else {
     loadDemoDB();
     document.getElementById('sdot').className='sdot ok';
     document.getElementById('slbl').textContent='Datos demo';
-    document.getElementById('hsub').textContent='Modo demo — configura GitHub en CFG';
+    document.getElementById('hsub').textContent='Modo demo';
   }
   buildOpts();
   renderStatus();
