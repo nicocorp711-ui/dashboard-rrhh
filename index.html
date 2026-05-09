@@ -733,6 +733,7 @@ async function loadData(){
   buildOpts();
   renderStatus();
   renderHistorial();
+  renderLiquidaciones();
 }
 
 // FILTER OPTIONS
@@ -1121,6 +1122,7 @@ function renderLiqList(){
 }
 
 function renderLiquidaciones(){
+  console.log('renderLiquidaciones called - DB.liq:', DB.liq.length, 'DB.liqRes:', DB.liqRes.length);
   // Periodo: mes más reciente de movimientos
   const periodo = getLatestLiqPeriodo();
   const el = document.getElementById('liq-periodo');
