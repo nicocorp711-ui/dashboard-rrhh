@@ -205,6 +205,7 @@ tbody td{padding:8px 12px;color:var(--tx);white-space:nowrap}
       <div class="nav-tabs">
         <button class="ntab active" id="tab-status" onclick="setView('status')">Estado del mes</button>
         <button class="ntab" id="tab-hist" onclick="setView('historial')">Historial</button>
+        <button class="ntab" id="tab-liq" onclick="setView('liquidaciones')">Liquidaciones</button>
       </div>
       <button class="hbtn" onclick="doLogout()">Salir</button>
     </div>
@@ -395,15 +396,100 @@ tbody td{padding:8px 12px;color:var(--tx);white-space:nowrap}
 
     </div>
   </div>
-</div>
+  <!-- ══════════════════════════════════════
+       VISTA: LIQUIDACIONES
+  ══════════════════════════════════════ -->
+  <div class="view" id="view-liquidaciones">
+    <div class="main">
 
-<script>
+      <!-- HEADER INFO -->
+      <div class="status-top" style="margin-bottom:16px">
+        <div class="period"><span class="sdot ok"></span>Datos al: <strong id="liq-periodo">—</strong></div>
+      </div>
+
+      <!-- RESUMEN POR EMPRESA -->
+      <div class="sec">
+        <div class="sec-ico" style="background:var(--pur2)">💰</div>
+        <div><div class="sec-title">Resumen de Liquidaciones por Empresa</div><div class="sec-sub">Montos pendientes de pago (S/)</div></div>
+        <div class="sec-line"></div>
+      </div>
+
+      <div class="tcard" style="margin-bottom:20px">
+        <div class="twrap">
+          <table id="tb-liq-res">
+            <thead>
+              <tr>
+                <th>Empresa</th>
+                <th style="text-align:right">AFP Regular</th>
+                <th style="text-align:right">Repro</th>
+                <th style="text-align:right">CTS</th>
+                <th style="text-align:right">Utilidades</th>
+                <th style="text-align:right">LBS</th>
+              </tr>
+            </thead>
+            <tbody id="tb-liq-res-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- LISTA DETALLADA -->
+      <div class="sec" style="margin-top:8px">
+        <div class="sec-ico" style="background:var(--red2)">📋</div>
+        <div>
+          <div class="sec-title">Detalle de Liquidaciones</div>
+          <div class="sec-sub" id="liq-total-label">—</div>
+        </div>
+        <div class="sec-line"></div>
+      </div>
+
+      <!-- FILTROS LISTA -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+        <select class="fsel" id="liq-f-empresa" onchange="renderLiqList()"><option value="todas">Todas las empresas</option></select>
+        <select class="fsel" id="liq-f-estado-pago" onchange="renderLiqList()"><option value="todos">Todos los estados</option></select>
+        <select class="fsel" id="liq-f-anio" onchange="renderLiqList()"><option value="todos">Todos los años</option></select>
+        <select class="fsel" id="liq-f-tipo" onchange="renderLiqList()"><option value="todos">Todos los tipos</option></select>
+        <input class="srch" id="liq-srch" placeholder="🔍 Buscar empleado o DNI..." oninput="renderLiqList()" style="width:220px">
+        <button class="rbtn" onclick="resetLiq()">✕ Limpiar</button>
+      </div>
+
+      <div class="tcard">
+        <div class="thead">
+          <div><div class="ttitle">Registros de liquidaciones</div><div class="tsub" id="liq-count">—</div></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:11px;color:var(--tx2)">Saldo deuda total filtrado:</span>
+            <span id="liq-saldo-total" style="font-size:13px;font-weight:600;color:var(--red);font-family:var(--mono)">S/ 0</span>
+          </div>
+        </div>
+        <div class="twrap" style="max-height:400px"><table>
+          <thead>
+            <tr>
+              <th>DNI</th>
+              <th>Empleado</th>
+              <th>Empresa</th>
+              <th>Tipo</th>
+              <th>Año cese</th>
+              <th>Estado trab.</th>
+              <th>Estado pago</th>
+              <th style="text-align:right">Monto pagado</th>
+              <th style="text-align:right">Saldo deuda</th>
+            </tr>
+          </thead>
+          <tbody id="tb-liq"></tbody>
+        </table></div>
+        <div class="tfoot" id="ft-liq"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
 const CFG = {
   PASSWORD: "rrhh2024",
   USE_JSON: true,
   JSON_MOV:  "https://raw.githubusercontent.com/nicocorp711-ui/dashboard-rrhh/main/movimientos.json",
   JSON_MOV2: "https://raw.githubusercontent.com/nicocorp711-ui/dashboard-rrhh/main/movimientos_2.json",
   JSON_SEL:  "https://raw.githubusercontent.com/nicocorp711-ui/dashboard-rrhh/main/seleccion.json",
+  JSON_LIQ:  "https://raw.githubusercontent.com/nicocorp711-ui/dashboard-rrhh/main/liquidaciones.json",
 };
 
 const MES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -413,7 +499,7 @@ const TPO_COLS  = ['MENOR A 3 MESES','MENOR A 6 MESES','MENOR A 1 AÑO','MENOR A
 const TPO_LBL   = ['< 3 m','< 6 m','< 1 a','< 2 a','< 3 a','< 4 a','< 5 a'];
 const CLR = ['#4f8ef7','#2dd4a0','#f5a52a','#a78bfa','#f26b6b','#80cbc4','#e57373','#ffb74d'];
 
-let DB = {is:[],st:[],sm:[],a2:[],b2:[],trq:[],rq2:[]};
+let DB = {is:[],st:[],sm:[],a2:[],b2:[],trq:[],rq2:[],liq:[],liqRes:[]};
 let CH = {};
 
 function n(v){ return isNaN(Number(v))?0:Number(v); }
@@ -468,6 +554,7 @@ function setView(v){
   document.querySelectorAll('.ntab').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.getElementById('tab-'+v).classList.add('active');
+  if(v==='liquidaciones') renderLiquidaciones();
 }
 
 // MODAL
@@ -595,6 +682,8 @@ function loadDemoDB(){
   DB.b2  = DEMO_DATA.bajas_2;
   DB.trq = DEMO_DATA.tabla_rq;
   DB.rq2 = DEMO_DATA.requerimientos_2;
+  DB.liq = [];
+  DB.liqRes = [];
 }
 
 async function loadData(){
@@ -607,10 +696,11 @@ async function loadData(){
         if(!r.ok) throw new Error(`Error ${r.status} en ${url}`);
         return r.json();
       };
-      const [mov, mov2, sel] = await Promise.all([
+      const [mov, mov2, sel, liq] = await Promise.all([
         fetchJ(CFG.JSON_MOV),
         fetchJ(CFG.JSON_MOV2),
         fetchJ(CFG.JSON_SEL),
+        fetchJ(CFG.JSON_LIQ),
       ]);
       DB.is  = mov.ingresos_salidas||[];
       DB.st  = mov.salidas_tiempo||[];
@@ -619,10 +709,12 @@ async function loadData(){
       DB.b2  = mov2.bajas_2||[];
       DB.trq = sel.tabla_rq||[];
       DB.rq2 = sel.requerimientos_2||[];
+      DB.liq    = liq.loquidaciones||[];
+      DB.liqRes = liq.resumen||[];
       document.getElementById('sdot').className='sdot ok';
       document.getElementById('slbl').textContent='GitHub · Actualizado';
       document.getElementById('hsub').textContent='Actualizado: '+new Date().toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'});
-      console.log('Datos cargados — IS:'+DB.is.length+' A2:'+DB.a2.length+' B2:'+DB.b2.length+' TRQ:'+DB.trq.length+' RQ2:'+DB.rq2.length);
+      console.log('Datos cargados — IS:'+DB.is.length+' A2:'+DB.a2.length+' B2:'+DB.b2.length+' TRQ:'+DB.trq.length+' RQ2:'+DB.rq2.length+' LIQ:'+DB.liq.length);
     } catch(e){
       console.error('Error cargando JSON:', e.message);
       document.getElementById('sdot').className='sdot';
@@ -906,6 +998,148 @@ function renderRQH(){
   document.getElementById('tb-rh').innerHTML=rows.map(r=>`<tr><td>${mesNom(r['Mes'])}</td><td>${r['Unidad']||'—'}</td><td>${r['Puesto']||'—'}</td><td>${r['Responsable - GH']||'—'}</td><td>${stB(r['Estado']||'')}</td><td>${r['Tiempo de Proceso  (Recp / Firma)']||'—'}</td><td>${efBadge(r['Resultado de Eficiencia'])}</td></tr>`).join('');
   document.getElementById('rq-h-sub').textContent=`${rows.length} requerimientos en ${anio}`;
   document.getElementById('ft-rh').textContent=`${rows.length} registros`;
+}
+// ══ LIQUIDACIONES ══
+function fmtMoney(v){
+  const num = isNaN(Number(v))?0:Number(v);
+  return 'S/ '+num.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function estadoPagoBadge(e){
+  if(!e||e.trim()==='') return '<span class="badge bb">—</span>';
+  const el=e.trim().toUpperCase();
+  if(el==='PAGADO'||el.includes('FALLECIDO')) return `<span class="badge bg">${e.trim()}</span>`;
+  if(el==='PENDIENTE'||el==='EN CURSO'||el.includes('PARA')||el.includes('ENVIADO')||el.includes('FINANZAS')||el.includes('RRHH')||el.includes('CUOTAS')) return `<span class="badge ba">${e.trim()}</span>`;
+  if(el==='NO CORRESPONDE'||el==='NO LBS'||el.includes('LIQUIDACION EN CERO')) return '<span class="badge bb">'+e.trim()+'</span>';
+  return `<span class="badge ba">${e.trim()}</span>`;
+}
+
+function getLatestLiqPeriodo(){
+  // Usa el mes más reciente de ingresos_salidas como referencia de "datos al"
+  const {mes,anio} = getLatest();
+  return `${MES[mes-1]} ${anio}`;
+}
+
+function buildLiqOpts(){
+  const empresas = [...new Set(DB.liq.map(r=>r['Empresa']).filter(Boolean).map(r=>r.trim()))].sort();
+  const estados  = [...new Set(DB.liq.map(r=>r['ESTADO DE PAGO']).filter(v=>v&&v.trim()))].sort();
+  const anios    = [...new Set(DB.liq.map(r=>r['AÑO CESE']).filter(v=>v&&v.trim()&&v.length===4))].sort().reverse();
+  const tipos    = [...new Set(DB.liq.map(r=>r['TIPO DE COLAB']).filter(Boolean).map(r=>r.trim()))].sort();
+
+  const se = document.getElementById('liq-f-empresa');
+  se.innerHTML='<option value="todas">Todas las empresas</option>'+empresas.map(e=>`<option value="${e}">${e}</option>`).join('');
+
+  const sp = document.getElementById('liq-f-estado-pago');
+  sp.innerHTML='<option value="todos">Todos los estados</option>'+estados.map(e=>`<option value="${e}">${e}</option>`).join('');
+
+  const sa = document.getElementById('liq-f-anio');
+  sa.innerHTML='<option value="todos">Todos los años</option>'+anios.map(a=>`<option value="${a}">${a}</option>`).join('');
+
+  const st = document.getElementById('liq-f-tipo');
+  st.innerHTML='<option value="todos">Todos los tipos</option>'+tipos.map(t=>`<option value="${t}">${t}</option>`).join('');
+}
+
+function renderLiqResumen(){
+  const tbody = document.getElementById('tb-liq-res-body');
+  if(!tbody) return;
+  const res = DB.liqRes;
+  if(!res.length){ tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--tx3);padding:20px">Sin datos</td></tr>'; return; }
+
+  const rows = res.map(r=>{
+    const isTotal = r['Empresa']==='Total';
+    const style = isTotal ? 'style="font-weight:600;border-top:2px solid var(--bd2);background:var(--sf2)"' : '';
+    const nf2 = v => {
+      const n = isNaN(Number(v))?0:Number(v);
+      return n===0 ? '<span style="color:var(--tx3)">—</span>' : 'S/ '+n.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2});
+    };
+    return `<tr ${style}>
+      <td>${r['Empresa']||'—'}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:11px">${nf2(r['AFP Regular'])}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:11px">${nf2(r['Repro'])}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:11px">${nf2(r['CTS'])}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:11px">${nf2(r['Utilidades'])}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--red)">${nf2(r['LBS'])}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = rows.join('');
+}
+
+function renderLiqList(){
+  const empresa   = document.getElementById('liq-f-empresa')?.value||'todas';
+  const estadoPago= document.getElementById('liq-f-estado-pago')?.value||'todos';
+  const anio      = document.getElementById('liq-f-anio')?.value||'todos';
+  const tipo      = document.getElementById('liq-f-tipo')?.value||'todos';
+  const q         = (document.getElementById('liq-srch')?.value||'').toLowerCase().trim();
+
+  let rows = DB.liq.filter(r=>{
+    if(empresa!=='todas' && (r['Empresa']||'').trim()!==empresa) return false;
+    if(estadoPago!=='todos' && (r['ESTADO DE PAGO']||'').trim()!==estadoPago) return false;
+    if(anio!=='todos' && r['AÑO CESE']!==anio) return false;
+    if(tipo!=='todos' && (r['TIPO DE COLAB']||'').trim()!==tipo) return false;
+    if(q){
+      const emp=(r['Empleado']||'').toLowerCase();
+      const dni=(r['DNI']||'').toString();
+      if(!emp.includes(q)&&!dni.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const totalSaldo = rows.reduce((s,r)=>s+(isNaN(Number(r['SALDO DEUDA']))?0:Number(r['SALDO DEUDA'])),0);
+
+  document.getElementById('liq-count').textContent = `${rows.length} registros`;
+  document.getElementById('ft-liq').textContent = `${rows.length} registros`;
+  document.getElementById('liq-saldo-total').textContent = fmtMoney(totalSaldo);
+
+  const MAX=500;
+  const visible = rows.slice(0,MAX);
+  const tbody = document.getElementById('tb-liq');
+  if(!tbody) return;
+
+  if(!rows.length){
+    tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--tx3);padding:20px">Sin registros</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = visible.map(r=>`<tr>
+    <td style="font-family:var(--mono);font-size:11px">${r['DNI']||'—'}</td>
+    <td>${r['Empleado']||'—'}</td>
+    <td style="font-size:11px">${(r['Empresa']||'—').trim()}</td>
+    <td><span class="badge bb" style="font-size:10px">${(r['TIPO DE COLAB']||'—').trim()}</span></td>
+    <td style="text-align:center">${r['AÑO CESE']||'—'}</td>
+    <td style="font-size:11px">${(r['ESTADO TRAB']||'—').trim()}</td>
+    <td>${estadoPagoBadge(r['ESTADO DE PAGO'])}</td>
+    <td style="text-align:right;font-family:var(--mono);font-size:11px">${fmtMoney(r['MONTO PAGADO'])}</td>
+    <td style="text-align:right;font-family:var(--mono);font-size:11px;color:${Number(r['SALDO DEUDA'])>0?'var(--red)':'var(--tx3)'}">${fmtMoney(r['SALDO DEUDA'])}</td>
+  </tr>`).join('');
+
+  if(rows.length>MAX){
+    document.getElementById('ft-liq').textContent=`Mostrando ${MAX} de ${rows.length} registros — usa los filtros para acotar`;
+  }
+}
+
+function renderLiquidaciones(){
+  // Periodo: mes más reciente de movimientos
+  const periodo = getLatestLiqPeriodo();
+  const el = document.getElementById('liq-periodo');
+  if(el) el.textContent = periodo;
+
+  // Total saldo deuda general
+  const totalSaldo = DB.liq.reduce((s,r)=>s+(isNaN(Number(r['SALDO DEUDA']))?0:Number(r['SALDO DEUDA'])),0);
+  const lbl = document.getElementById('liq-total-label');
+  if(lbl) lbl.textContent = `Total saldo deuda: ${fmtMoney(totalSaldo)} · ${DB.liq.length} registros`;
+
+  buildLiqOpts();
+  renderLiqResumen();
+  renderLiqList();
+}
+
+function resetLiq(){
+  document.getElementById('liq-f-empresa').value='todas';
+  document.getElementById('liq-f-estado-pago').value='todos';
+  document.getElementById('liq-f-anio').value='todos';
+  document.getElementById('liq-f-tipo').value='todos';
+  document.getElementById('liq-srch').value='';
+  renderLiqList();
 }
 </script>
 </body>
