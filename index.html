@@ -415,7 +415,7 @@ tbody td{padding:8px 12px;color:var(--tx);white-space:nowrap}
       </div>
 
       <div class="tcard" style="margin-bottom:20px">
-        <div class="twrap">
+        <div class="twrap" style="max-height:400px;overflow-y:auto">
           <table id="tb-liq-res">
             <thead>
               <tr>
@@ -711,7 +711,7 @@ async function loadData(){
       DB.b2  = mov2.bajas_2||[];
       DB.trq = sel.tabla_rq||[];
       DB.rq2 = sel.requerimientos_2||[];
-      DB.liq    = liq.loquidaciones||[];
+      DB.liq    = liq.liquidaciones||liq.loquidaciones||[];
       DB.liqRes = liq.resumen||[];
       document.getElementById('sdot').className='sdot ok';
       document.getElementById('slbl').textContent='GitHub · Actualizado';
@@ -1025,20 +1025,21 @@ function getLatestLiqPeriodo(){
 function buildLiqOpts(){
   const empresas = [...new Set(DB.liq.map(r=>r['Empresa']).filter(Boolean).map(r=>r.trim()))].sort();
   const estados  = [...new Set(DB.liq.map(r=>r['ESTADO DE PAGO']).filter(v=>v&&v.trim()))].sort();
-  const anios    = [...new Set(DB.liq.map(r=>r['AÑO CESE']).filter(v=>v&&v.trim()&&v.length===4))].sort().reverse();
+  // Filtrar años válidos: solo 4 dígitos entre 2000 y 2030
+  const anios    = [...new Set(DB.liq.map(r=>(r['AÑO CESE']||'').trim()).filter(v=>/^20[0-3]\d$/.test(v)))].sort().reverse();
   const tipos    = [...new Set(DB.liq.map(r=>r['TIPO DE COLAB']).filter(Boolean).map(r=>r.trim()))].sort();
 
   const se = document.getElementById('liq-f-empresa');
-  se.innerHTML='<option value="todas">Todas las empresas</option>'+empresas.map(e=>`<option value="${e}">${e}</option>`).join('');
+  if(se) se.innerHTML='<option value="todas">Todas las empresas</option>'+empresas.map(e=>`<option value="${e}">${e}</option>`).join('');
 
   const sp = document.getElementById('liq-f-estado-pago');
-  sp.innerHTML='<option value="todos">Todos los estados</option>'+estados.map(e=>`<option value="${e}">${e}</option>`).join('');
+  if(sp) sp.innerHTML='<option value="todos">Todos los estados</option>'+estados.map(e=>`<option value="${e}">${e}</option>`).join('');
 
   const sa = document.getElementById('liq-f-anio');
-  sa.innerHTML='<option value="todos">Todos los años</option>'+anios.map(a=>`<option value="${a}">${a}</option>`).join('');
+  if(sa) sa.innerHTML='<option value="todos">Todos los años</option>'+anios.map(a=>`<option value="${a}">${a}</option>`).join('');
 
   const st = document.getElementById('liq-f-tipo');
-  st.innerHTML='<option value="todos">Todos los tipos</option>'+tipos.map(t=>`<option value="${t}">${t}</option>`).join('');
+  if(st) st.innerHTML='<option value="todos">Todos los tipos</option>'+tipos.map(t=>`<option value="${t}">${t}</option>`).join('');
 }
 
 function renderLiqResumen(){
@@ -1076,7 +1077,7 @@ function renderLiqList(){
   let rows = DB.liq.filter(r=>{
     if(empresa!=='todas' && (r['Empresa']||'').trim()!==empresa) return false;
     if(estadoPago!=='todos' && (r['ESTADO DE PAGO']||'').trim()!==estadoPago) return false;
-    if(anio!=='todos' && r['AÑO CESE']!==anio) return false;
+    if(anio!=='todos' && (r['AÑO CESE']||'').trim()!==anio) return false;
     if(tipo!=='todos' && (r['TIPO DE COLAB']||'').trim()!==tipo) return false;
     if(q){
       const emp=(r['Empleado']||'').toLowerCase();
